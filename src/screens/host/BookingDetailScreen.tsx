@@ -88,9 +88,9 @@ export function BookingDetailScreen() {
 
   return (
     <Screen title={t.detail.title(booking.id)} back={`/host/bookings?p=${property.slug}`} tabs={hostTabs(t)}>
-      <div className="card">
+      <div className="card accent">
         <div className="row between">
-          <h2>{booking.guestName}</h2>
+          <h2 className="title-caps">{booking.guestName}</h2>
           <StatusBadge status={booking.status} />
         </div>
         <dl className="kv">
@@ -129,15 +129,15 @@ export function BookingDetailScreen() {
       {NEXT_STATUSES[booking.status].length > 0 && (
         <div className="actions">
           {NEXT_STATUSES[booking.status].map((s) => (
-            <button key={s} type="button" className={`btn ${s === 'cancelled' || s === 'no_show' ? 'danger' : ''}`} onClick={() => setStatus(s)}>
+            <button key={s} type="button" className={`btn ${s === 'cancelled' || s === 'no_show' ? 'danger' : s === 'confirmed' ? 'lime' : ''}`} onClick={() => setStatus(s)}>
               {t.statusAction[s]}
             </button>
           ))}
         </div>
       )}
 
-      <div className="card">
-        <span className="section-title">{t.detail.money}</span>
+      <div className="panel">
+        <span className="section-title" style={{ color: 'var(--lime)' }}>{t.detail.money}</span>
         <dl className="kv">
           <dt>{t.detail.total}</dt>
           <dd className="strong">{fmt(booking.total)}</dd>
@@ -152,10 +152,12 @@ export function BookingDetailScreen() {
             </>
           )}
           <dt>{t.detail.balance}</dt>
-          <dd className="price">{fmt(money.balance)}</dd>
+          <dd>
+            <span className="pricePill">{fmt(money.balance)}</span>
+          </dd>
         </dl>
         <div className="divider" />
-        <span className="section-title">{t.detail.payments}</span>
+        <span className="section-title" style={{ color: 'var(--lime)' }}>{t.detail.payments}</span>
         {payments.length === 0 && <p className="muted small">{t.detail.noPayments}</p>}
         {payments.map((p) => (
           <div key={p.id} className="row between small">
@@ -163,14 +165,14 @@ export function BookingDetailScreen() {
               {t.paymentKind[p.kind]} · {t.method[p.method]}
               {p.provider ? ` (${p.provider})` : ''} · {fmtInstant(p.paidAt)}
             </span>
-            <span className={p.kind === 'refund' ? 'danger strong' : 'strong'}>
+            <span className="strong" style={{ color: p.kind === 'refund' ? '#ff8a7a' : 'var(--lime)' }}>
               {p.kind === 'refund' ? '−' : ''}
               {fmt(p.amount)}
             </span>
           </div>
         ))}
         {!showPay && (
-          <button type="button" className="btn secondary" onClick={openPay}>
+          <button type="button" className="btn lime" onClick={openPay}>
             {t.detail.addPayment}
           </button>
         )}
@@ -200,10 +202,10 @@ export function BookingDetailScreen() {
             )}
             {payError && <p className="error">{payError}</p>}
             <div className="actions">
-              <button type="submit" className="btn">
+              <button type="submit" className="btn lime">
                 {t.common.save}
               </button>
-              <button type="button" className="btn secondary" onClick={() => setShowPay(false)}>
+              <button type="button" className="btn white" onClick={() => setShowPay(false)}>
                 {t.common.cancel}
               </button>
             </div>
@@ -215,10 +217,10 @@ export function BookingDetailScreen() {
         <div className="card">
           <span className="section-title">{t.detail.message}</span>
           <div className="actions">
-            <a className="btn secondary" href={`https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer">
+            <a className="btn outline" href={`https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer">
               WhatsApp
             </a>
-            <a className="btn secondary" href={`https://t.me/share/url?url=${encodeURIComponent(' ')}&text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer">
+            <a className="btn outline" href={`https://t.me/share/url?url=${encodeURIComponent(' ')}&text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer">
               Telegram
             </a>
           </div>

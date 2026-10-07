@@ -25,6 +25,10 @@ export const ky: Dict = {
     guestHint: 'Бош күндөр, баалар жана алдын ала төлөм менен брондоо',
     host: 'Мен объекттин ээсимин',
     hostHint: 'Шахматка, брондоолор жана төлөмдөр телефондон',
+    switchRole: 'Ролду алмаштыруу',
+    bandTitle: 'Боз үйлөр жана үйлөр',
+    bandAccent: 'түз ээсинен',
+    bandText: 'Алдын ала төлөм түз ээсине түшөт, брондоону ал өзү ырастайт.',
   },
   kind: { yurt_camp: 'Боз үй лагери', guest_house: 'Конок үйү', glamping: 'Глэмпинг', resort: 'Эс алуу базасы' },
   amenity: {
@@ -66,7 +70,7 @@ export const ky: Dict = {
   method: { qr: 'QR', card: 'Карта', transfer: 'Которуу', cash: 'Накталай', ota: 'Аянтча аркылуу' },
   paymentKind: { prepayment: 'Алдын ала төлөм', payment: 'Төлөм', refund: 'Кайтаруу' },
   search: {
-    title: 'Кайда токтоо',
+    title: 'Кайда баруу',
     checkIn: 'Келүү',
     checkOut: 'Кетүү',
     guests: 'Коноктор',
@@ -76,6 +80,7 @@ export const ky: Dict = {
     fromPrice: (x) => `түнүнө ${x} баштап`,
     tabSearch: 'Издөө',
     tabTrips: 'Брондоолорум',
+    tilePrice: (n, x) => `${n} түн / ${x}`,
   },
   property: {
     about: 'Объект жөнүндө',
@@ -94,6 +99,15 @@ export const ky: Dict = {
     tooManyGuests: 'Мынча конок батпайт',
     badDates: 'Кетүү күнү келүү күнүнөн кийин болушу керек',
     notFound: 'Объект табылган жок',
+    fromTotal: (x) => `${x} баштап`,
+    checkIn: 'Келүү',
+    checkOut: 'Кетүү',
+    fromTime: (x) => `${x} баштап`,
+    untilTime: (x) => `${x} чейин`,
+    prepaymentShort: 'Алдын ала төлөм',
+    none: 'керек эмес',
+    freeNow: 'Бош',
+    included: 'Жеринде эмне бар',
   },
   book: {
     title: 'Брондоо',

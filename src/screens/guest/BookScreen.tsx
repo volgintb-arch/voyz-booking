@@ -79,15 +79,19 @@ export function BookScreen() {
 
   return (
     <Screen title={t.book.title} back={`/guest/p/${property.slug}?${query}`}>
-      <div className="card">
-        <span className="section-title">{t.book.stay}</span>
-        <h3>
-          {property.name[lang]} · {category.name[lang]}
-        </h3>
-        <p className="muted">
+      <div className="panel">
+        <div className="row between" style={{ alignItems: 'flex-start' }}>
+          <div className="stack" style={{ gap: 4 }}>
+            <b className="title-caps" style={{ fontSize: 17 }}>
+              {property.name[lang]}
+            </b>
+            <span className="muted">{category.name[lang]}</span>
+          </div>
+          <span className="pricePill">{money(quote.total)}</span>
+        </div>
+        <span>
           {fmtRange(stay.checkIn, stay.checkOut)} · {t.common.nights(quote.nights.length)} · {t.common.guests(stay.guests)}
-        </p>
-        <div className="divider" />
+        </span>
         <dl className="kv">
           {quote.nights.map((n) => (
             <div key={n.date} style={{ display: 'contents' }}>
@@ -101,8 +105,6 @@ export function BookScreen() {
               <dd>{money(quote.extraGuestTotal)}</dd>
             </>
           )}
-          <dt className="strong">{t.common.total}</dt>
-          <dd className="price">{money(quote.total)}</dd>
         </dl>
       </div>
 
@@ -114,7 +116,7 @@ export function BookScreen() {
           <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" autoComplete="tel" placeholder="+996 …" />
         </Field>
 
-        <div className="card">
+        <div className="card accent">
           <span className="section-title">{t.book.payment}</span>
           {needsPrepayment ? (
             <>
@@ -125,7 +127,7 @@ export function BookScreen() {
                   </button>
                 ))}
               </div>
-              <p className="strong">{t.book.prepayNow(money(quote.prepaymentDue))}</p>
+              <p className="price">{t.book.prepayNow(money(quote.prepaymentDue))}</p>
               <p className="muted">{t.book.rest(money(quote.total - quote.prepaymentDue))}</p>
               <p className="muted small">
                 {policy.nonRefundable ? t.property.nonRefundable : t.property.freeCancel(policy.freeCancelDays)}

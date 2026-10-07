@@ -26,6 +26,10 @@ export const en: Dict = {
     guestHint: 'Free dates, prices and booking with a deposit',
     host: 'I host guests',
     hostHint: 'Calendar, bookings and payments from your phone',
+    switchRole: 'Switch role',
+    bandTitle: 'Yurts and houses',
+    bandAccent: 'straight from hosts',
+    bandText: 'Deposits go directly to the host, who confirms the booking.',
   },
   kind: { yurt_camp: 'Yurt camp', guest_house: 'Guesthouse', glamping: 'Glamping', resort: 'Resort' },
   amenity: {
@@ -67,7 +71,7 @@ export const en: Dict = {
   method: { qr: 'QR', card: 'Card', transfer: 'Transfer', cash: 'Cash', ota: 'Via OTA' },
   paymentKind: { prepayment: 'Deposit', payment: 'Payment', refund: 'Refund' },
   search: {
-    title: 'Where to stay',
+    title: 'Where to go',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
     guests: 'Guests',
@@ -77,6 +81,7 @@ export const en: Dict = {
     fromPrice: (x) => `from ${x} per night`,
     tabSearch: 'Search',
     tabTrips: 'My bookings',
+    tilePrice: (n, x) => `${s(n, 'night', 'nights')} / ${x}`,
   },
   property: {
     about: 'About',
@@ -95,6 +100,15 @@ export const en: Dict = {
     tooManyGuests: 'Too many guests for this room',
     badDates: 'Check-out must be after check-in',
     notFound: 'Property not found',
+    fromTotal: (x) => `from ${x}`,
+    checkIn: 'Check-in',
+    checkOut: 'Check-out',
+    fromTime: (x) => `from ${x}`,
+    untilTime: (x) => `until ${x}`,
+    prepaymentShort: 'Deposit',
+    none: 'not needed',
+    freeNow: 'Available',
+    included: 'On site',
   },
   book: {
     title: 'Booking',

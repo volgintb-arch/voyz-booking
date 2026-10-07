@@ -51,7 +51,7 @@ export function PayScreen() {
 
   return (
     <Screen title={t.pay.title} back="/guest/trips">
-      <div className="card" style={{ textAlign: 'center' }}>
+      <div className="card accent" style={{ textAlign: 'center' }}>
         <p className="muted">{property.name[lang]}</p>
         <p className="price" style={{ fontSize: 28 }}>
           {formatMoney(due, booking.currency, lang)}
@@ -67,7 +67,7 @@ export function PayScreen() {
         <button type="button" className="btn" onClick={paid}>
           {t.pay.paid}
         </button>
-        <button type="button" className="btn secondary" onClick={() => navigate(`/guest/done/${booking.id}`, { replace: true })}>
+        <button type="button" className="btn lime" onClick={() => navigate(`/guest/done/${booking.id}`, { replace: true })}>
           {t.pay.later}
         </button>
       </div>

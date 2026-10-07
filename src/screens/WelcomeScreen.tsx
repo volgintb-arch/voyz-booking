@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { Cover } from '../components/Cover';
+import { Icon } from '../components/Icon';
 import { LangSwitch } from '../components/Layout';
 import { useT } from '../i18n';
 
@@ -6,36 +8,45 @@ export function WelcomeScreen() {
   const { t } = useT();
   return (
     <div className="app">
-      <main className="content" style={{ paddingTop: 'calc(24px + env(safe-area-inset-top))' }}>
-        <div className="row between">
-          <div className="logo">
-            <img src="./icon.svg" alt="" width={40} height={40} />
-            Voyz
-          </div>
-          <LangSwitch />
-        </div>
+      <header className="header">
+        <span className="spacer" />
+        <h1>Voyz</h1>
+        <LangSwitch />
+      </header>
+      <main className="content">
         <div className="hero">
-          <h1 style={{ fontSize: 28 }}>{t.welcome.tagline}</h1>
-          <Link to="/guest" className="choice">
-            <span className="ico" aria-hidden>
-              ⛺
-            </span>
-            <span>
-              <strong>{t.welcome.guest}</strong>
-              <span className="muted">{t.welcome.guestHint}</span>
-            </span>
-          </Link>
-          <Link to="/host" className="choice">
-            <span className="ico" aria-hidden>
-              🗝
-            </span>
-            <span>
-              <strong>{t.welcome.host}</strong>
-              <span className="muted">{t.welcome.hostHint}</span>
-            </span>
-          </Link>
+          <Cover kind="yurt_camp" hue={165} />
+          <div className="wordmark">
+            VOYZ
+            <small>booking</small>
+          </div>
         </div>
-        <p className="muted small">{t.common.demo}</p>
+        <Link to="/guest" className="promo">
+          <strong>
+            {t.welcome.guest}
+            <span className="muted">{t.welcome.guestHint}</span>
+          </strong>
+          <span className="roundBtn lime">
+            <Icon name="search" />
+          </span>
+        </Link>
+        <Link to="/host" className="promo">
+          <strong>
+            {t.welcome.host}
+            <span className="muted">{t.welcome.hostHint}</span>
+          </strong>
+          <span className="roundBtn lime">
+            <Icon name="grid" />
+          </span>
+        </Link>
+        <div className="darkBand">
+          <h2>
+            {t.welcome.bandTitle}
+            <em>{t.welcome.bandAccent}</em>
+          </h2>
+          <p>{t.welcome.bandText}</p>
+        </div>
+        <p className="muted small center">{t.common.demo}</p>
       </main>
     </div>
   );

@@ -37,23 +37,24 @@ export function TripsScreen() {
         };
         const owesPrepayment = canCancel && money.paid < b.prepaymentDue;
         return (
-          <div key={b.id} className="card">
+          <div key={b.id} className="card accent">
             <div className="row between">
               <span className="muted small">{b.id}</span>
               <StatusBadge status={b.status} />
             </div>
-            <h3>{property.name[lang]}</h3>
-            <p className="muted">
-              {category.name[lang]} · {fmtRange(b.checkIn, b.checkOut)} · {t.common.guests(b.guests)}
-            </p>
+            <h3 className="title-caps">{property.name[lang]}</h3>
+            <span className="muted">
+              {category.name[lang]} · {t.common.guests(b.guests)}
+            </span>
             <div className="row between">
-              <span>{t.trips.paid(fmt(money.paid))}</span>
-              <span className="price">{fmt(b.total)}</span>
+              <span>{fmtRange(b.checkIn, b.checkOut)}</span>
+              <span className="pricePill">{fmt(b.total)}</span>
             </div>
+            <span className="small">{t.trips.paid(fmt(money.paid))}</span>
             {canCancel && (
               <div className="actions">
                 {owesPrepayment && (
-                  <Link className="btn small" to={`/guest/pay/${b.id}`}>
+                  <Link className="btn small lime" to={`/guest/pay/${b.id}`}>
                     {t.pay.title}
                   </Link>
                 )}

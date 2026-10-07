@@ -30,6 +30,10 @@ export const ru = {
     guestHint: 'Свободные даты, цены и бронь с предоплатой',
     host: 'Я хозяин объекта',
     hostHint: 'Шахматка, брони и оплаты с телефона',
+    switchRole: 'Сменить роль',
+    bandTitle: 'Юрты и дома',
+    bandAccent: 'напрямую у хозяев',
+    bandText: 'Предоплата идёт сразу хозяину, бронь подтверждает он сам.',
   },
   kind: {
     yurt_camp: 'Юрточный лагерь',
@@ -86,7 +90,7 @@ export const ru = {
     refund: 'Возврат',
   },
   search: {
-    title: 'Где остановиться',
+    title: 'Куда поехать',
     checkIn: 'Заезд',
     checkOut: 'Выезд',
     guests: 'Гостей',
@@ -96,6 +100,7 @@ export const ru = {
     fromPrice: (x: string) => `от ${x} за ночь`,
     tabSearch: 'Поиск',
     tabTrips: 'Мои брони',
+    tilePrice: (n: number, x: string) => `${n} ${plural(n, 'ночь', 'ночи', 'ночей')} / ${x}`,
   },
   property: {
     about: 'Об объекте',
@@ -114,6 +119,15 @@ export const ru = {
     tooManyGuests: 'Столько гостей не поместится',
     badDates: 'Дата выезда должна быть позже заезда',
     notFound: 'Объект не найден',
+    fromTotal: (x: string) => `от ${x}`,
+    checkIn: 'Заезд',
+    checkOut: 'Выезд',
+    fromTime: (x: string) => `с ${x}`,
+    untilTime: (x: string) => `до ${x}`,
+    prepaymentShort: 'Предоплата',
+    none: 'не нужна',
+    freeNow: 'Свободно',
+    included: 'Что есть на месте',
   },
   book: {
     title: 'Бронирование',

@@ -58,9 +58,9 @@ export function BookingsScreen() {
         const unit = state.units.find((u) => u.id === b.unitId);
         const money = bookingMoney(b, state.payments);
         return (
-          <Link key={b.id} to={`/host/b/${b.id}`} className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <Link key={b.id} to={`/host/b/${b.id}`} className="card accent" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="row between">
-              <span className="strong">{b.guestName}</span>
+              <span className="strong" style={{ fontSize: 19 }}>{b.guestName}</span>
               <StatusBadge status={b.status} />
             </div>
             <div className="row between muted small">
@@ -73,7 +73,7 @@ export function BookingsScreen() {
               <span>
                 {t.detail.paid}: {formatMoney(money.paid, b.currency, lang)}
               </span>
-              <span className="strong">{formatMoney(b.total, b.currency, lang)}</span>
+              <span className="pricePill">{formatMoney(b.total, b.currency, lang)}</span>
             </div>
           </Link>
         );

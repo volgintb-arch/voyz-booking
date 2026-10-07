@@ -7,7 +7,7 @@ export function Cover({ kind, hue }: { kind: PropertyKind; hue: number }) {
   const near = `hsl(${hue} 35% 42%)`;
   const ground = `hsl(${(hue + 40) % 360} 35% 55%)`;
   return (
-    <svg className="cover" viewBox="0 0 320 140" role="img" aria-hidden>
+    <svg className="cover" viewBox="0 0 320 140" preserveAspectRatio="xMidYMax slice" role="img" aria-hidden>
       <rect width="320" height="140" fill={sky} />
       <circle cx="262" cy="34" r="14" fill="#fff6d8" />
       <path d="M0 92 L48 46 L82 74 L130 30 L178 80 L214 52 L262 90 L320 60 V140 H0Z" fill={far} />

@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { Field, Screen } from '../../components/Layout';
+import { type IconName } from '../../components/Icon';
+import { AccRow, Field, Screen } from '../../components/Layout';
 import { useToast } from '../../components/Toast';
 import { addDays, nightsBetween, todayIn } from '../../domain/dates';
 import { formatMoney, parseMajor } from '../../domain/money';
@@ -22,16 +23,11 @@ import { useHostProperty } from './useHostProperty';
 
 const ALL_METHODS: PaymentMethod[] = ['qr', 'card', 'transfer', 'cash'];
 
-function Section({ title, children, open }: { title: string; children: ReactNode; open?: boolean }) {
+function Section({ title, icon, children, open }: { title: string; icon: IconName; children: ReactNode; open?: boolean }) {
   return (
-    <details className="card" open={open}>
-      <summary>
-        <h3 style={{ display: 'inline' }}>{title}</h3>
-      </summary>
-      <div className="stack" style={{ marginTop: 12 }}>
-        {children}
-      </div>
-    </details>
+    <AccRow icon={icon} title={title} open={open}>
+      {children}
+    </AccRow>
   );
 }
 
@@ -44,26 +40,28 @@ export function SettingsScreen() {
       {property ? (
         <>
           <PropertySwitch properties={properties} value={property} onChange={select} />
-          <Section title={t.settings.prices}>
+          <div>
+          <Section icon="wallet" title={t.settings.prices}>
             <Prices key={property.id} property={property} onSaved={() => toast.show(t.common.saved)} />
           </Section>
-          <Section title={t.settings.rules}>
+          <Section icon="shield" title={t.settings.rules}>
             <Rules key={property.id} property={property} onSaved={() => toast.show(t.common.saved)} />
           </Section>
-          <Section title={t.settings.closed}>
+          <Section icon="calendar" title={t.settings.closed}>
             <ClosedDates key={property.id} property={property} />
           </Section>
-          <Section title={t.settings.ical}>
+          <Section icon="grid" title={t.settings.ical}>
             <Ical key={property.id} property={property} />
           </Section>
+          </div>
         </>
       ) : (
         <p className="muted">{t.host.noProperties}</p>
       )}
-      <Section title={t.settings.aynes} open>
+      <Section icon="sparkle" title={t.settings.aynes} open>
         <Aynes />
       </Section>
-      <Section title={t.settings.demo}>
+      <Section icon="sliders" title={t.settings.demo}>
         <Demo />
       </Section>
       {toast.node}
@@ -97,7 +95,7 @@ function CategoryPrices({ category, onSaved }: { category: Category; onSaved: ()
     onSaved();
   };
   return (
-    <form className="stack" onSubmit={save} style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+    <form className="card" onSubmit={save}>
       <strong>{category.name[lang]}</strong>
       <div className="grid2">
         <Field label={t.settings.basePrice}>
@@ -113,7 +111,7 @@ function CategoryPrices({ category, onSaved }: { category: Category; onSaved: ()
           <input value={capacity} onChange={(e) => setCapacity(e.target.value)} inputMode="numeric" />
         </Field>
       </div>
-      <button type="submit" className="btn small secondary">
+      <button type="submit" className="btn small lime">
         {t.common.save}
       </button>
     </form>
@@ -159,7 +157,7 @@ function Prices({ property, onSaved }: { property: Property; onSaved: () => void
       {categories.map((c) => (
         <CategoryPrices key={c.id} category={c} onSaved={onSaved} />
       ))}
-      <strong style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>{t.settings.seasons}</strong>
+      <strong style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 14 }}>{t.settings.seasons}</strong>
       {seasons.length === 0 && <p className="muted small">{t.settings.noSeasons}</p>}
       {seasons.map((s) => (
         <div key={s.id} className="row between small">
@@ -169,7 +167,7 @@ function Prices({ property, onSaved }: { property: Property; onSaved: () => void
           </span>
           <span className="row">
             <span className="strong">{formatMoney(s.price, property.currency, lang)}</span>
-            <button type="button" className="iconBtn" aria-label={t.common.delete} onClick={() => update((st) => removeSeason(st, s.id))}>
+            <button type="button" className="roundBtn small" aria-label={t.common.delete} onClick={() => update((st) => removeSeason(st, s.id))}>
               ×
             </button>
           </span>
@@ -203,7 +201,7 @@ function Prices({ property, onSaved }: { property: Property; onSaved: () => void
             <input value={minNights} onChange={(e) => setMinNights(e.target.value)} inputMode="numeric" placeholder="—" />
           </Field>
         </div>
-        <button type="submit" className="btn small secondary">
+        <button type="submit" className="btn small lime">
           {t.settings.addSeason}
         </button>
       </form>
@@ -253,7 +251,7 @@ function Rules({ property, onSaved }: { property: Property; onSaved: () => void 
           </button>
         ))}
       </div>
-      <button type="submit" className="btn small secondary">
+      <button type="submit" className="btn small lime">
         {t.common.save}
       </button>
     </form>
@@ -290,7 +288,7 @@ function ClosedDates({ property }: { property: Property }) {
           <span>
             <strong>{units.find((u) => u.id === b.unitId)?.name}</strong> · {fmtRange(b.from, b.to)} · {b.label}
           </span>
-          <button type="button" className="iconBtn" aria-label={t.common.delete} onClick={() => update((s) => removeBlock(s, b.id))}>
+          <button type="button" className="roundBtn small" aria-label={t.common.delete} onClick={() => update((s) => removeBlock(s, b.id))}>
             ×
           </button>
         </div>
@@ -317,7 +315,7 @@ function ClosedDates({ property }: { property: Property }) {
           </Field>
         </div>
         {error && <p className="error">{error}</p>}
-        <button type="submit" className="btn small secondary">
+        <button type="submit" className="btn small lime">
           {t.settings.closeDates}
         </button>
       </form>
@@ -352,7 +350,7 @@ function Ical({ property }: { property: Property }) {
           <code className="small" style={{ wordBreak: 'break-all' }}>{`https://api.voyz.kg/ical/${property.slug}/${u.id}.ics`}</code>
         </div>
       ))}
-      <strong style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>{t.settings.importTitle}</strong>
+      <strong style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 14 }}>{t.settings.importTitle}</strong>
       <p className="muted small">{t.settings.importHint}</p>
       {channels.map((c) => (
         <div key={c.id} className="row between small">
@@ -360,7 +358,7 @@ function Ical({ property }: { property: Property }) {
             <strong>{units.find((u) => u.id === c.unitId)?.name}</strong> · {platformName(c.platform)} ·{' '}
             {c.lastSyncAt ? t.settings.lastSync(fmtInstant(c.lastSyncAt)) : t.settings.never}
           </span>
-          <button type="button" className="iconBtn" aria-label={t.common.delete} onClick={() => update((s) => removeIcalChannel(s, c.id))}>
+          <button type="button" className="roundBtn small" aria-label={t.common.delete} onClick={() => update((s) => removeIcalChannel(s, c.id))}>
             ×
           </button>
         </div>
@@ -387,7 +385,7 @@ function Ical({ property }: { property: Property }) {
         <Field label={t.settings.importUrl}>
           <input value={url} onChange={(e) => setUrl(e.target.value)} type="url" inputMode="url" placeholder="https://…" />
         </Field>
-        <button type="submit" className="btn small secondary">
+        <button type="submit" className="btn small lime">
           {t.common.add}
         </button>
       </form>
@@ -450,11 +448,11 @@ function Aynes() {
           <span className="muted small">{t.settings.shareNameHint}</span>
         </span>
       </label>
-      <div className="row between" style={{ borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+      <div className="row between" style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 14 }}>
         <strong>
           {t.settings.queue} {waiting > 0 ? `· ${waiting}` : ''}
         </strong>
-        <button type="button" className="btn small secondary" disabled={!aynes.connected || !online || syncing || waiting === 0} onClick={() => void flush()}>
+        <button type="button" className="btn small lime" disabled={!aynes.connected || !online || syncing || waiting === 0} onClick={() => void flush()}>
           {t.settings.sendNow}
         </button>
       </div>

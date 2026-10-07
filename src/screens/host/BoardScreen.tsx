@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Icon } from '../../components/Icon';
 import { Screen } from '../../components/Layout';
 import { holdsUnit } from '../../domain/availability';
 import { addDays, nightsBetween, todayIn } from '../../domain/dates';
@@ -81,14 +82,14 @@ export function BoardScreen() {
       <PropertySwitch properties={properties} value={property} onChange={select} />
       <div className="row between">
         <div className="row">
-          <button type="button" className="iconBtn" aria-label="-7" onClick={() => setOffset((o) => o - 7)}>
-            ‹
+          <button type="button" className="roundBtn small" aria-label="-7" onClick={() => setOffset((o) => o - 7)}>
+            <Icon name="back" size={18} />
           </button>
-          <button type="button" className="btn small secondary" onClick={() => setOffset(-1)}>
+          <button type="button" className="chip" onClick={() => setOffset(-1)}>
             {t.host.today}
           </button>
-          <button type="button" className="iconBtn" aria-label="+7" onClick={() => setOffset((o) => o + 7)}>
-            ›
+          <button type="button" className="roundBtn small" aria-label="+7" onClick={() => setOffset((o) => o + 7)}>
+            <Icon name="chevron" size={18} />
           </button>
         </div>
         <div className="chips">
@@ -107,9 +108,11 @@ export function BoardScreen() {
               <th className="unit" />
               {dates.map((d) => (
                 <th key={d} className={`${d === today ? 'today' : ''} ${isWeekend(d) ? 'weekend' : ''}`}>
-                  {fmtDate(d, { weekday: 'short' })}
-                  <br />
-                  {fmtDate(d, { day: 'numeric' })}
+                  <span>
+                    {fmtDate(d, { weekday: 'short' })}
+                    <br />
+                    {fmtDate(d, { day: 'numeric' })}
+                  </span>
                 </th>
               ))}
             </tr>
@@ -167,7 +170,7 @@ export function BoardScreen() {
       <div className="legend">
         {TONES.map((tone) => (
           <span key={tone}>
-            <i className={`bar ${tone}`} style={{ position: 'static' }} />
+            <i className={`bar ${tone}`} />
             {t.host.legend[tone]}
           </span>
         ))}

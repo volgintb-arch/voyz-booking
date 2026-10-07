@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Voyz Booking</string>
+    <string name="title_activity_main">Voyz Booking</string>
+    <string name="package_name">kg.voyz.booking</string>
+    <string name="custom_url_scheme">kg.voyz.booking</string>
+</resources>

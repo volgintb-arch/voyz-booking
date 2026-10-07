@@ -1,0 +1,12 @@
+node_modules
+dist
+dev-dist
+*.local
+.DS_Store
+# native build outputs (projects themselves are committed)
+android/app/build
+android/.gradle
+android/build
+ios/App/build
+ios/App/Pods
+ios/DerivedData

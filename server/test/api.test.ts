@@ -109,6 +109,28 @@ describe('host', () => {
     expect((await api(h, 'GET', '/api/host/state')).status).toBe(401);
   });
 
+  it('edits the property, room types and units, but never deletes booked ones', async () => {
+    h = await harness({ ALLOW_DEV_LOGIN: 'true' });
+    const auth = bearer(await devToken(h));
+    type S = Omit<State, 'units' | 'properties'> & { categories: { id: string; name: { ru: string } }[]; units: { id: string; name: string; categoryId: string }[]; properties: { id: string; amenities: string[]; name: { ru: string } }[] };
+    let s = await api<S>(h, 'PATCH', '/api/host/properties/p-sonkul', { amenities: ['wifi', 'sauna'], name: { ru: 'Сон-Куль', ky: 'Соң-Көл', en: 'Son-Kul' } }, auth);
+    expect(s.data.properties.find((p) => p.id === 'p-sonkul')).toMatchObject({ amenities: ['wifi', 'sauna'], name: { ru: 'Сон-Куль' } });
+
+    s = await api<S>(h, 'POST', '/api/host/properties/p-sonkul/categories', { name: 'VIP-юрта', capacity: 2, baseOccupancy: 2, basePrice: 900000, units: ['VIP 1'] }, auth);
+    const vip = s.data.categories.find((c) => c.name.ru === 'VIP-юрта')!;
+    s = await api<S>(h, 'POST', `/api/host/categories/${vip.id}/units`, { name: 'VIP 2' }, auth);
+    const vipUnits = s.data.units.filter((u) => u.categoryId === vip.id);
+    expect(vipUnits.map((u) => u.name)).toEqual(['VIP 1', 'VIP 2']);
+    s = await api<S>(h, 'PATCH', `/api/host/units/${vipUnits[1]!.id}`, { name: 'VIP Озеро' }, auth);
+    expect(s.data.units.some((u) => u.name === 'VIP Озеро')).toBe(true);
+
+    // Units and room types with bookings stay.
+    expect((await api(h, 'DELETE', '/api/host/units/u-sk-1', undefined, auth)).error?.code).toBe('conflict');
+    expect((await api(h, 'DELETE', '/api/host/categories/c-sk-std', undefined, auth)).error?.code).toBe('conflict');
+    s = await api<S>(h, 'DELETE', `/api/host/categories/${vip.id}`, undefined, auth);
+    expect(s.data.units.some((u) => u.categoryId === vip.id)).toBe(false);
+  });
+
   it('keeps dev login off unless explicitly allowed', async () => {
     h = await harness();
     expect((await api(h, 'POST', '/api/auth/dev')).status).toBe(403);

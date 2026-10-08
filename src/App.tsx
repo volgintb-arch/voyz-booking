@@ -16,6 +16,7 @@ import { SettingsScreen } from './screens/host/SettingsScreen';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 import { GuestGate, HostGate } from './screens/gates';
 import { NewPropertyScreen } from './screens/host/NewPropertyScreen';
+import { EditPropertyScreen } from './screens/host/EditPropertyScreen';
 
 // Hash routing: works the same on GitHub Pages, in the iOS/Android shell
 // (file-like origin) and inside a Telegram Mini App.
@@ -42,6 +43,7 @@ export function App() {
             <Route path="/host/promo" element={<PromoScreen />} />
             <Route path="/host/poster" element={<PosterScreen />} />
             <Route path="/host/new-property" element={<NewPropertyScreen />} />
+            <Route path="/host/property" element={<EditPropertyScreen />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

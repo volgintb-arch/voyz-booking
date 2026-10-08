@@ -68,6 +68,10 @@ export async function snapshot(ctx: Ctx, host: HostIdentity) {
 }
 
 export interface PropertyPatch {
+  kind?: PropertyKind;
+  lat?: number;
+  lng?: number;
+  amenities?: string[];
   name?: Localized;
   region?: Localized;
   description?: Localized;
@@ -87,6 +91,10 @@ export async function updateProperty(ctx: Ctx, hostId: string, propertyId: strin
     vals.push(v);
     sets.push(`${col} = $${vals.length}`);
   };
+  if (patch.kind) set('kind', patch.kind);
+  if (patch.lat !== undefined) set('lat', patch.lat);
+  if (patch.lng !== undefined) set('lng', patch.lng);
+  if (patch.amenities) set('amenities', patch.amenities);
   if (patch.name) set('name', JSON.stringify(patch.name));
   if (patch.region) set('region', JSON.stringify(patch.region));
   if (patch.description) set('description', JSON.stringify(patch.description));
@@ -124,14 +132,72 @@ export async function updateCategory(
   ctx: Ctx,
   hostId: string,
   id: string,
-  patch: { basePrice: number; extraGuestPrice: number; minNights: number; capacity: number },
+  patch: { name?: string; baseOccupancy?: number; basePrice: number; extraGuestPrice: number; minNights: number; capacity: number },
 ): Promise<void> {
   await assertOwns(ctx, hostId, 'categories', id);
   await ctx.db.query(
     `update categories set base_price = $2, extra_guest_price = $3, min_nights = $4, capacity = $5,
-       base_occupancy = least(base_occupancy, $5) where id = $1`,
-    [id, patch.basePrice, patch.extraGuestPrice, patch.minNights, patch.capacity],
+       base_occupancy = least(coalesce($7, base_occupancy), $5),
+       name = coalesce($6::jsonb, name) where id = $1`,
+    [id, patch.basePrice, patch.extraGuestPrice, patch.minNights, patch.capacity, patch.name ? JSON.stringify({ ru: patch.name, ky: patch.name, en: patch.name }) : null, patch.baseOccupancy ?? null],
   );
+}
+
+export async function addCategory(
+  ctx: Ctx,
+  hostId: string,
+  propertyId: string,
+  c: { name: string; capacity: number; baseOccupancy: number; basePrice: number; extraGuestPrice: number; minNights: number; units: string[] },
+): Promise<string> {
+  await assertOwner(ctx.db, hostId, propertyId);
+  return tx(ctx.db, async (q) => {
+    const id = newId('c');
+    const sort = (await one<{ n: number }>(q, 'select coalesce(max(sort), 0) + 1 as n from categories where property_id = $1', [propertyId]))!.n;
+    await q.query(
+      `insert into categories (id, property_id, name, capacity, base_occupancy, base_price, extra_guest_price, min_nights, sort)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [id, propertyId, JSON.stringify({ ru: c.name, ky: c.name, en: c.name }), c.capacity, Math.min(c.baseOccupancy, c.capacity), c.basePrice, c.extraGuestPrice, c.minNights, sort],
+    );
+    for (const [i, name] of c.units.entries()) {
+      await q.query('insert into units (id, property_id, category_id, name, sort, ical_token) values ($1,$2,$3,$4,$5,$6)', [
+        newId('u'), propertyId, id, name, i, randomToken(18),
+      ]);
+    }
+    return id;
+  });
+}
+
+/** A room type with bookings stays: history and accounting refer to it. */
+export async function removeCategory(ctx: Ctx, hostId: string, id: string): Promise<void> {
+  await assertOwns(ctx, hostId, 'categories', id);
+  await tx(ctx.db, async (q) => {
+    const used = await one(q, 'select 1 from bookings where category_id = $1 limit 1', [id]);
+    if (used) throw new ApiError('conflict', 'This room type has bookings', { reason: 'has_bookings' });
+    await q.query('delete from units where category_id = $1', [id]);
+    await q.query('delete from seasons where category_id = $1', [id]);
+    await q.query('delete from categories where id = $1', [id]);
+  });
+}
+
+export async function addUnit(ctx: Ctx, hostId: string, categoryId: string, name: string): Promise<void> {
+  await assertOwns(ctx, hostId, 'categories', categoryId);
+  const cat = (await one<{ property_id: string }>(ctx.db, 'select property_id from categories where id = $1', [categoryId]))!;
+  const sort = (await one<{ n: number }>(ctx.db, 'select coalesce(max(sort), 0) + 1 as n from units where category_id = $1', [categoryId]))!.n;
+  await ctx.db.query('insert into units (id, property_id, category_id, name, sort, ical_token) values ($1,$2,$3,$4,$5,$6)', [
+    newId('u'), cat.property_id, categoryId, name, sort, randomToken(18),
+  ]);
+}
+
+export async function renameUnit(ctx: Ctx, hostId: string, id: string, name: string): Promise<void> {
+  await assertOwns(ctx, hostId, 'units', id);
+  await ctx.db.query('update units set name = $2 where id = $1', [id, name]);
+}
+
+export async function removeUnit(ctx: Ctx, hostId: string, id: string): Promise<void> {
+  await assertOwns(ctx, hostId, 'units', id);
+  const used = await one(ctx.db, 'select 1 from bookings where unit_id = $1 limit 1', [id]);
+  if (used) throw new ApiError('conflict', 'This unit has bookings', { reason: 'has_bookings' });
+  await ctx.db.query('delete from units where id = $1', [id]);
 }
 
 export async function addSeason(

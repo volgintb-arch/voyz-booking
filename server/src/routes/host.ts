@@ -9,7 +9,9 @@ import {
   ExtendBody,
   HostBookingBody,
   IcalBody,
+  NewCategoryBody,
   NewPropertyBody,
+  UnitBody,
   PaymentBody,
   PropertyPatchBody,
   SeasonBody,
@@ -18,6 +20,11 @@ import {
 import { requireHost, type HostIdentity } from '../services/auth';
 import { addHostPayment, assertOwner, confirmDeposit, createHostBooking, extendHold, setStatus } from '../services/bookings';
 import {
+  addCategory,
+  addUnit,
+  removeCategory,
+  removeUnit,
+  renameUnit,
   addBlock,
   addIcalChannel,
   addSeason,
@@ -53,6 +60,11 @@ export function hostRoutes(app: FastifyInstance, ctx: Ctx) {
   app.post('/api/host/properties', mutate(async (h, req) => ({ propertyId: await createProperty(ctx, h.id, NewPropertyBody.parse(req.body)) })));
   app.patch('/api/host/properties/:id', mutate((h, req) => updateProperty(ctx, h.id, id(req), PropertyPatchBody.parse(req.body))));
   app.patch('/api/host/categories/:id', mutate((h, req) => updateCategory(ctx, h.id, id(req), CategoryPatchBody.parse(req.body))));
+  app.post('/api/host/properties/:id/categories', mutate(async (h, req) => ({ categoryId: await addCategory(ctx, h.id, id(req), NewCategoryBody.parse(req.body)) })));
+  app.delete('/api/host/categories/:id', mutate((h, req) => removeCategory(ctx, h.id, id(req))));
+  app.post('/api/host/categories/:id/units', mutate((h, req) => addUnit(ctx, h.id, id(req), UnitBody.parse(req.body).name)));
+  app.patch('/api/host/units/:id', mutate((h, req) => renameUnit(ctx, h.id, id(req), UnitBody.parse(req.body).name)));
+  app.delete('/api/host/units/:id', mutate((h, req) => removeUnit(ctx, h.id, id(req))));
   app.post('/api/host/properties/:id/seasons', mutate((h, req) => addSeason(ctx, h.id, id(req), SeasonBody.parse(req.body))));
   app.delete('/api/host/seasons/:id', mutate((h, req) => removeSeason(ctx, h.id, id(req))));
   app.post('/api/host/units/:id/blocks', mutate((h, req) => addBlock(ctx, h.id, id(req), BlockBody.parse(req.body))));

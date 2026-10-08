@@ -35,6 +35,14 @@ export function SettingsScreen() {
       {property ? (
         <>
           <PropertySwitch properties={properties} value={property} onChange={select} />
+          <div className="actions">
+            <Link to={`/host/property?p=${property.slug}`} className="btn lime">
+              <Icon name="sliders" /> {t.edit.open}
+            </Link>
+            <Link to="/host/new-property" className="btn outline">
+              <Icon name="plus" /> {t.onboarding.addProperty}
+            </Link>
+          </div>
           <div>
           <Link to={`/host/promo?p=${property.slug}`} className="promo" style={{ minHeight: 64 }}>
             <strong>
@@ -66,11 +74,13 @@ export function SettingsScreen() {
           </div>
         </>
       ) : (
-        <p className="muted">{t.host.noProperties}</p>
+        <>
+          <p className="muted">{t.host.noProperties}</p>
+          <Link to="/host/new-property" className="btn lime">
+            <Icon name="plus" /> {t.onboarding.addProperty}
+          </Link>
+        </>
       )}
-      <Link to="/host/new-property" className="btn outline">
-        <Icon name="plus" /> {t.onboarding.addProperty}
-      </Link>
       <Section icon="user" title={apiMode ? t.settings.account : t.settings.demo}>
         {apiMode ? <Account /> : <Demo />}
       </Section>

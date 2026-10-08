@@ -59,7 +59,7 @@ export function NewPropertyScreen() {
     const r = await actions.createProperty({ kind, name: name.trim(), region: region.trim(), description: description.trim(), checkInTime, checkOutTime, categories });
     setBusy(false);
     if (!r.ok) return setError(r.code === 'offline' ? t.common.offline : t.common.serverDown);
-    navigate(`/host/settings?p=`, { replace: true });
+    navigate('/host/property', { replace: true });
   };
 
   return (

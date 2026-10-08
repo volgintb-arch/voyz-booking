@@ -335,3 +335,51 @@ export function createProperty(state: AppState, input: NewPropertyInput): { stat
     state: { ...state, seq, properties: [...state.properties, property], categories: [...state.categories, ...categories], units: [...state.units, ...units] },
   };
 }
+
+// ---------- Editing room types and units (demo mode; the server enforces the same rules) ----------
+
+export function addCategoryWithUnits(
+  state: AppState,
+  propertyId: string,
+  c: { name: string; capacity: number; baseOccupancy: number; basePrice: number; extraGuestPrice: number; minNights: number; units: string[] },
+): AppState {
+  let seq = state.seq;
+  const id = `c-${++seq}`;
+  const units = c.units.map((name) => ({ id: `u-${++seq}`, propertyId, categoryId: id, name }));
+  return {
+    ...state,
+    seq,
+    categories: [
+      ...state.categories,
+      { id, propertyId, name: { ru: c.name, ky: c.name, en: c.name }, capacity: c.capacity, baseOccupancy: Math.min(c.baseOccupancy, c.capacity), basePrice: c.basePrice, extraGuestPrice: c.extraGuestPrice, minNights: c.minNights },
+    ],
+    units: [...state.units, ...units],
+  };
+}
+
+/** Room types and units that have bookings stay — history and accounting refer to them. */
+export function removeCategoryIfFree(state: AppState, id: string): AppState | null {
+  if (state.bookings.some((b) => b.categoryId === id)) return null;
+  return {
+    ...state,
+    categories: state.categories.filter((c) => c.id !== id),
+    units: state.units.filter((u) => u.categoryId !== id),
+    seasons: state.seasons.filter((s) => s.categoryId !== id),
+  };
+}
+
+export function addUnit(state: AppState, categoryId: string, name: string): AppState {
+  const cat = state.categories.find((c) => c.id === categoryId);
+  if (!cat) return state;
+  const seq = state.seq + 1;
+  return { ...state, seq, units: [...state.units, { id: `u-${seq}`, propertyId: cat.propertyId, categoryId, name }] };
+}
+
+export function renameUnit(state: AppState, id: string, name: string): AppState {
+  return { ...state, units: state.units.map((u) => (u.id === id ? { ...u, name } : u)) };
+}
+
+export function removeUnitIfFree(state: AppState, id: string): AppState | null {
+  if (state.bookings.some((b) => b.unitId === id)) return null;
+  return { ...state, units: state.units.filter((u) => u.id !== id), blocks: state.blocks.filter((b) => b.unitId !== id) };
+}

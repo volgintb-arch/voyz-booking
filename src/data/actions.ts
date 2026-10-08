@@ -13,7 +13,12 @@ import type { Block, BookingStatus, Channel, IcalChannel, LinkSource, PaymentKin
 import { channelFor } from '../share/links';
 import {
   addBlock,
+  addCategoryWithUnits,
   addIcalChannel,
+  addUnit,
+  removeCategoryIfFree,
+  removeUnitIfFree,
+  renameUnit,
   addPayment,
   addSeason,
   applySnapshot,
@@ -249,18 +254,58 @@ export function useActions() {
         return done({ propertyId: r.propertyId });
       },
 
-      updateProperty: (propertyId: string, patch: Partial<Pick<Property, 'cancellation' | 'paymentMethods' | 'payment'>>) =>
+      updateProperty: (
+        propertyId: string,
+        patch: Partial<
+          Pick<Property, 'kind' | 'name' | 'region' | 'description' | 'checkInTime' | 'checkOutTime' | 'amenities' | 'lat' | 'lng' | 'cancellation' | 'paymentMethods' | 'payment'>
+        >,
+      ) =>
         apiMode ? host('PATCH', `api/host/properties/${propertyId}`, patch) : Promise.resolve(local((s) => updateProperty(s, propertyId, patch))),
 
-      updateCategory: (id: string, patch: { basePrice: number; extraGuestPrice: number; minNights: number; capacity: number }) =>
+      updateCategory: (
+        id: string,
+        patch: { name?: string; baseOccupancy?: number; basePrice: number; extraGuestPrice: number; minNights: number; capacity: number },
+      ) =>
         apiMode
           ? host('PATCH', `api/host/categories/${id}`, patch)
           : Promise.resolve(
               local((s) => {
                 const c = s.categories.find((x) => x.id === id);
-                return updateCategory(s, id, { ...patch, baseOccupancy: Math.min(c?.baseOccupancy ?? patch.capacity, patch.capacity) });
+                const { name, ...rest } = patch;
+                return updateCategory(s, id, {
+                  ...rest,
+                  ...(name ? { name: { ru: name, ky: name, en: name } } : {}),
+                  baseOccupancy: Math.min(patch.baseOccupancy ?? c?.baseOccupancy ?? patch.capacity, patch.capacity),
+                });
               }),
             ),
+
+      addCategory: (
+        propertyId: string,
+        c: { name: string; capacity: number; baseOccupancy: number; basePrice: number; extraGuestPrice: number; minNights: number; units: string[] },
+      ) => (apiMode ? host('POST', `api/host/properties/${propertyId}/categories`, c) : Promise.resolve(local((s) => addCategoryWithUnits(s, propertyId, c)))),
+
+      removeCategory: async (id: string): Promise<Result> => {
+        if (apiMode) return host('DELETE', `api/host/categories/${id}`);
+        const next = removeCategoryIfFree(state, id);
+        if (!next) return { ok: false, code: 'conflict' };
+        update(() => next);
+        return done(null);
+      },
+
+      addUnit: (categoryId: string, name: string) =>
+        apiMode ? host('POST', `api/host/categories/${categoryId}/units`, { name }) : Promise.resolve(local((s) => addUnit(s, categoryId, name))),
+
+      renameUnit: (id: string, name: string) =>
+        apiMode ? host('PATCH', `api/host/units/${id}`, { name }) : Promise.resolve(local((s) => renameUnit(s, id, name))),
+
+      removeUnit: async (id: string): Promise<Result> => {
+        if (apiMode) return host('DELETE', `api/host/units/${id}`);
+        const next = removeUnitIfFree(state, id);
+        if (!next) return { ok: false, code: 'conflict' };
+        update(() => next);
+        return done(null);
+      },
 
       addSeason: (propertyId: string, se: { categoryId: string | null; name: string; from: string; to: string; price: number; minNights: number | null }) =>
         apiMode

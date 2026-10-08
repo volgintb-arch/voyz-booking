@@ -47,7 +47,14 @@ export const PaymentBody = z.object({
 export const DepositBody = z.object({ method: PaymentMethod.default('qr') });
 export const ExtendBody = z.object({ hours: z.number().int().min(1).max(72).default(12) });
 
+export const Amenity = z.enum(['breakfast', 'parking', 'shower', 'wifi', 'horse', 'sauna', 'beach', 'heating']);
+export const Kind = z.enum(['yurt_camp', 'guest_house', 'glamping', 'resort']);
+
 export const PropertyPatchBody = z.object({
+  kind: Kind.optional(),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  amenities: z.array(Amenity).max(20).optional(),
   name: Localized.optional(),
   region: Localized.optional(),
   description: Localized.optional(),
@@ -70,11 +77,25 @@ export const PropertyPatchBody = z.object({
 });
 
 export const CategoryPatchBody = z.object({
+  name: z.string().trim().min(1).max(60).optional(),
+  baseOccupancy: z.number().int().min(1).max(50).optional(),
   basePrice: Money,
   extraGuestPrice: Money,
   minNights: z.number().int().min(1).max(60),
   capacity: z.number().int().min(1).max(50),
 });
+
+export const NewCategoryBody = z.object({
+  name: z.string().trim().min(1).max(60),
+  capacity: z.number().int().min(1).max(50),
+  baseOccupancy: z.number().int().min(1).max(50),
+  basePrice: Money,
+  extraGuestPrice: Money.default(0),
+  minNights: z.number().int().min(1).max(60).default(1),
+  units: z.array(z.string().trim().min(1).max(40)).min(1).max(100),
+});
+
+export const UnitBody = z.object({ name: z.string().trim().min(1).max(40) });
 
 export const SeasonBody = z.object({
   categoryId: z.string().nullable().default(null),

@@ -7,7 +7,7 @@ import { ensureWebhook, TelegramApi, TelegramNotifier } from './services/telegra
 import { startWorkers } from './workers';
 
 const config = loadConfig();
-const db = createPool(config.DATABASE_URL);
+const db = createPool(config.DATABASE_URL, config.DATABASE_SSL);
 const applied = await migrate(db);
 // Pilot demo (dev sign-in allowed): an empty database gets the four demo properties.
 if (config.ALLOW_DEV_LOGIN && (await seedDemo(db))) console.log('demo data inserted');

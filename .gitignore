@@ -13,3 +13,5 @@ ios/DerivedData
 server/node_modules
 server/dist
 server/.env
+deploy/.env
+deploy/backups/*.dump

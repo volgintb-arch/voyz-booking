@@ -9,6 +9,7 @@ import type { AmenityCode, Category, Property, PropertyKind, Unit } from '../../
 import { useActions, type Result } from '../../data/actions';
 import { useStore } from '../../data/store';
 import { useT } from '../../i18n';
+import { PhotosEditor } from './PhotosEditor';
 import { PropertySwitch } from './PropertySwitch';
 import { hostTabs } from './tabs';
 import { useHostProperty } from './useHostProperty';
@@ -22,7 +23,19 @@ export function EditPropertyScreen() {
   const toast = useToast();
   const { properties, property, select } = useHostProperty();
   const report = (r: Result<unknown>) =>
-    toast.show(r.ok ? t.common.saved : r.code === 'conflict' ? t.edit.hasBookings : r.code === 'offline' ? t.common.offline : t.common.serverDown);
+    toast.show(
+      r.ok
+        ? t.common.saved
+        : r.code === 'conflict'
+          ? t.edit.hasBookings
+          : r.code === 'too_many'
+            ? t.photos.tooMany
+            : r.code === 'bad_image' || r.code === 'bad_request'
+              ? t.photos.badImage
+              : r.code === 'offline'
+                ? t.common.offline
+                : t.common.serverDown,
+    );
 
   if (!property) {
     return (
@@ -38,7 +51,10 @@ export function EditPropertyScreen() {
     <Screen title={t.edit.title} back={`/host/settings?p=${property.slug}`} tabs={hostTabs(t)}>
       <PropertySwitch properties={properties} value={property} onChange={select} />
       <div>
-        <AccRow icon="list" title={t.edit.info} open>
+        <AccRow icon="upload" title={t.photos.title} open>
+          <PhotosEditor property={property} onDone={report} />
+        </AccRow>
+        <AccRow icon="list" title={t.edit.info}>
           <InfoForm key={property.id} property={property} onDone={report} />
         </AccRow>
         <AccRow icon="sparkle" title={t.property.amenities}>

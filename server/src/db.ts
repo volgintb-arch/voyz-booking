@@ -12,8 +12,28 @@ export type Db = pg.Pool;
 export type Tx = pg.PoolClient;
 export type Queryable = pg.Pool | pg.PoolClient;
 
-export function createPool(url: string): Db {
-  return new pg.Pool({ connectionString: url, max: 10 });
+export type SslMode = 'auto' | 'off' | 'require' | 'verify';
+
+/**
+ * Connection settings for Postgres anywhere: local, Render, Supabase, a VPS.
+ * Supabase requires TLS with its own CA, so "auto" turns on encryption without
+ * certificate checks for *.supabase.com / *.supabase.co (DATABASE_SSL=verify to check).
+ */
+export function poolConfig(url: string, mode: SslMode = 'auto'): pg.PoolConfig {
+  const u = new URL(url);
+  const supabase = /(^|\.)supabase\.(co|com)$/.test(u.hostname);
+  const effective = mode === 'auto' ? (supabase ? 'require' : null) : mode;
+  if (effective === null) return { connectionString: url, max: 10 };
+  // An explicit ssl object only wins if the URL does not carry its own sslmode.
+  u.searchParams.delete('sslmode');
+  u.searchParams.delete('ssl');
+  const ssl = effective === 'off' ? false : effective === 'verify' ? true : { rejectUnauthorized: false };
+  // Supabase's free pooler allows few connections per project.
+  return { connectionString: u.toString(), ssl, max: supabase ? 5 : 10 };
+}
+
+export function createPool(url: string, mode: SslMode = 'auto'): Db {
+  return new pg.Pool(poolConfig(url, mode));
 }
 
 export async function tx<T>(db: Db, fn: (client: Tx) => Promise<T>): Promise<T> {

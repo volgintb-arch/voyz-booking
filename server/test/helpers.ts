@@ -39,7 +39,7 @@ async function db(): Promise<Db> {
 
 export async function resetDb(d: Db): Promise<void> {
   await d.query(`truncate hosts, sessions, login_codes, properties, categories, units, seasons, ical_channels, blocks,
-                  bookings, payments, outbox, notification_log restart identity cascade`);
+                  bookings, payments, outbox, notification_log, photos restart identity cascade`);
 }
 
 export async function harness(env: Partial<Record<string, string>> = {}, opts: { seed?: boolean; realNotifier?: boolean } = {}): Promise<Harness> {

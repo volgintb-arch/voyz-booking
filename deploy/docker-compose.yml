@@ -1,0 +1,78 @@
+# Voyz Booking on your own server (VPS in Kyrgyzstan, decision D-006).
+# Everything in one place: database, API, HTTPS, nightly backups.
+#
+#   cp .env.example .env   # fill in the values
+#   docker compose up -d --build
+#
+# Run from this folder (deploy/). Needs Docker with the compose plugin.
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: voyz
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      POSTGRES_DB: voyz
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U voyz -d voyz']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://voyz:${DB_PASSWORD}@db:5432/voyz
+      DATABASE_SSL: 'off'
+      API_URL: https://${API_DOMAIN:?set API_DOMAIN in .env}/
+      PORT: '8080'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # HTTPS certificates from Let's Encrypt, renewed automatically.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - api
+
+  # Nightly dump of the database, kept for 14 days in ./backups.
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          pg_dump -h db -U voyz -d voyz --no-owner -Fc -f /backups/voyz-$$(date +%F).dump
+          find /backups -name 'voyz-*.dump' -mtime +14 -delete
+          sleep 86400
+        done
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  caddy-data:

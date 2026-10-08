@@ -15,6 +15,7 @@ import type {
 } from '../domain/types';
 import { bookingPath, enqueue, paymentPath, toAynesBooking, toAynesPayment } from '../integrations/aynes';
 import type { Catalog, HostSnapshot } from '../api/types';
+import type { Photo } from '../domain/types';
 import { buildSeed, DEMO_HOST_ID, type SeedData } from './seed';
 
 export interface AynesSettings {
@@ -37,6 +38,8 @@ export interface AppState extends SeedData {
   host?: { id: string; name: string } | null;
   /** Server mode: whose data the state holds right now. */
   view?: 'guest' | 'host';
+  /** Property photos, cover first. */
+  photos?: Photo[];
 }
 
 export function initialState(now: Date = new Date()): AppState {
@@ -262,6 +265,7 @@ export function applySnapshot(state: AppState, snap: HostSnapshot): AppState {
     blocks: snap.blocks,
     icalChannels: snap.icalChannels,
     outbox: snap.outbox,
+    photos: snap.photos,
   };
 }
 
@@ -282,6 +286,7 @@ export function applyCatalog(state: AppState, cat: Catalog): AppState {
     payments: [],
     blocks: cat.occupancy.map((o, i) => ({ id: `occ-${i}`, unitId: o.unitId, from: o.from, to: o.to, reason: 'closed' as const, label: '' })),
     icalChannels: [],
+    photos: cat.photos,
   };
 }
 
@@ -382,4 +387,29 @@ export function renameUnit(state: AppState, id: string, name: string): AppState 
 export function removeUnitIfFree(state: AppState, id: string): AppState | null {
   if (state.bookings.some((b) => b.unitId === id)) return null;
   return { ...state, units: state.units.filter((u) => u.id !== id), blocks: state.blocks.filter((b) => b.unitId !== id) };
+}
+
+// ---------- Photos (demo mode keeps them on the device as small data URLs) ----------
+
+export const DEMO_MAX_PHOTOS = 6;
+
+export function addPhotoLocal(state: AppState, propertyId: string, p: { url: string; width: number; height: number }): AppState {
+  const seq = state.seq + 1;
+  return { ...state, seq, photos: [...(state.photos ?? []), { id: `ph-${seq}`, propertyId, ...p }] };
+}
+
+export function removePhotoLocal(state: AppState, id: string): AppState {
+  return { ...state, photos: (state.photos ?? []).filter((p) => p.id !== id) };
+}
+
+/** Moves a photo to the front: it becomes the cover. */
+export function makeCoverLocal(state: AppState, id: string): AppState {
+  const all = state.photos ?? [];
+  const photo = all.find((p) => p.id === id);
+  if (!photo) return state;
+  return { ...state, photos: [photo, ...all.filter((p) => p.id !== id)] };
+}
+
+export function photosOf(state: AppState, propertyId: string): Photo[] {
+  return (state.photos ?? []).filter((p) => p.propertyId === propertyId);
 }

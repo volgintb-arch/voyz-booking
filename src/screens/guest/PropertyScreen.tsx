@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Cover } from '../../components/Cover';
+import { Gallery } from '../../components/PropertyPhoto';
+import { photosOf } from '../../data/state';
 import { Icon } from '../../components/Icon';
 import { AccRow, Screen, SectionHead } from '../../components/Layout';
 import { freeUnits } from '../../domain/availability';
@@ -65,7 +66,7 @@ export function PropertyScreen() {
     <Screen title={t.kind[property.kind]} back={`/guest?${query}`} bar={bar}>
       <div className="tile">
         <div className="photo">
-          <Cover kind={property.kind} hue={property.hue} />
+          <Gallery kind={property.kind} hue={property.hue} photos={photosOf(state, property.id)} alt={property.name[lang]} />
         </div>
       </div>
       <div className="row between" style={{ alignItems: 'flex-start' }}>

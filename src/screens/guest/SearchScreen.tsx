@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Cover } from '../../components/Cover';
+import { PropertyPhoto } from '../../components/PropertyPhoto';
+import { photosOf } from '../../data/state';
 import { Screen } from '../../components/Layout';
 import { freeUnits } from '../../domain/availability';
 import { nightsBetween } from '../../domain/dates';
@@ -47,7 +48,7 @@ export function SearchScreen() {
       {list.map(({ p, free, minTotal }) => (
         <Link key={p.id} to={`/guest/p/${p.slug}?${query}`} className="tile">
           <div className="photo">
-            <Cover kind={p.kind} hue={p.hue} />
+            <PropertyPhoto kind={p.kind} hue={p.hue} photos={photosOf(state, p.id)} alt={p.name[lang]} />
           </div>
           <h3 className="title-caps" style={{ marginTop: 8 }}>
             {p.name[lang]}

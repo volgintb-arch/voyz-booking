@@ -37,6 +37,14 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}', 'assets/*-{latin,latin-ext,cyrillic,cyrillic-ext}-*.woff2'],
         globIgnores: ['s/**', 'widget.js', 'og.png'],
         navigateFallbackDenylist: [/\/s\//],
+        // Property photos from the server: keep them for offline viewing in the mountains.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.includes('/photos/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'voyz-photos', expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 60 } },
+          },
+        ],
       },
     }),
   ],

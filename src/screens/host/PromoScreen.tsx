@@ -10,6 +10,7 @@ import { PUBLIC_URL, SHARE_URL } from '../../config';
 import { addDays, todayIn } from '../../domain/dates';
 import { formatMoney } from '../../domain/money';
 import type { LinkSource } from '../../domain/types';
+import { photosOf } from '../../data/state';
 import { useStore } from '../../data/store';
 import { NoProperties } from '../../components/NoProperties';
 import { useT } from '../../i18n';
@@ -96,7 +97,7 @@ export function PromoScreen() {
       </div>
 
       <div className="previewCard" aria-label={t.promo.previewLabel}>
-        <img src="./og.png" alt="" />
+        <img src={photosOf(state, property.id)[0]?.url ?? './og.png'} alt="" />
         <div>
           <span className="tiny muted">{new URL(SHARE_URL).host}</span>
           <b>{name}</b>

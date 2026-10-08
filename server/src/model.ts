@@ -8,6 +8,7 @@ import type {
   Localized,
   OutboxItem,
   Payment,
+  Photo,
   Property,
   Season,
   Unit,
@@ -304,3 +305,24 @@ export async function loadBundle(q: Queryable, where: { id?: string; slug?: stri
     blocks: blocks.map(toBlock),
   };
 }
+
+export interface PhotoRow {
+  id: string;
+  property_id: string;
+  width: number;
+  height: number;
+  mime: string;
+}
+
+const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/png': 'png' };
+
+export const toPhoto = (r: PhotoRow, apiUrl: string): Photo => ({
+  id: r.id,
+  propertyId: r.property_id,
+  url: `${apiUrl}photos/${r.id}.${EXT[r.mime] ?? 'jpg'}`,
+  width: r.width,
+  height: r.height,
+});
+
+/** Photo list without the bytes. */
+export const PHOTO_COLUMNS = 'id, property_id, width, height, mime, sort';

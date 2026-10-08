@@ -64,6 +64,15 @@ export type AmenityCode =
   | 'beach'
   | 'heating';
 
+/** A photo of the property; the first one is the cover. */
+export interface Photo {
+  id: string;
+  propertyId: string;
+  url: string;
+  width: number;
+  height: number;
+}
+
 export interface Category {
   id: string;
   propertyId: string;

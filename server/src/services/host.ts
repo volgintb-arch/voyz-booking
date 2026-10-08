@@ -30,12 +30,13 @@ import {
 } from '../model';
 import { assertOwner } from './bookings';
 import { backfill } from './outbox';
+import { listPhotos } from './photos';
 import type { HostIdentity } from './auth';
 
 export async function snapshot(ctx: Ctx, host: HostIdentity) {
   const props = await many<PropertyRow>(ctx.db, 'select * from properties where owner_id = $1 order by created_at', [host.id]);
   const ids = props.map((p) => p.id);
-  const [categories, units, seasons, bookings, payments, blocks, channels, outbox] = await Promise.all([
+  const [categories, units, seasons, bookings, payments, blocks, channels, outbox, photos] = await Promise.all([
     many<CategoryRow>(ctx.db, 'select * from categories where property_id = any($1) order by sort, id', [ids]),
     many<UnitRow>(ctx.db, 'select * from units where property_id = any($1) order by sort, name', [ids]),
     many<SeasonRow>(ctx.db, 'select * from seasons where property_id = any($1) order by date_from', [ids]),
@@ -49,6 +50,7 @@ export async function snapshot(ctx: Ctx, host: HostIdentity) {
     many<BlockRow>(ctx.db, `select b.* from blocks b join units u on u.id = b.unit_id where u.property_id = any($1) and b.date_to > now() - interval '30 days'`, [ids]),
     many<IcalRow>(ctx.db, 'select c.* from ical_channels c join units u on u.id = c.unit_id where u.property_id = any($1)', [ids]),
     many<OutboxRow>(ctx.db, 'select * from outbox where property_id = any($1) order by id desc limit 50', [ids]),
+    listPhotos(ctx, ids),
   ]);
   return {
     host: { id: host.id, name: host.name, username: host.username, lang: host.lang },
@@ -64,6 +66,7 @@ export async function snapshot(ctx: Ctx, host: HostIdentity) {
     blocks: blocks.map(toBlock),
     icalChannels: channels.map(toIcal),
     outbox: outbox.map(toOutbox),
+    photos,
   };
 }
 

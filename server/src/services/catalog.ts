@@ -1,9 +1,10 @@
 // What guests see: published properties with prices and occupancy (no guest data).
 
 import { addDays, todayIn } from '../../../src/domain/dates';
-import type { Category, Property, Season, Unit } from '../../../src/domain/types';
+import type { Category, Photo, Property, Season, Unit } from '../../../src/domain/types';
 import type { Ctx } from '../context';
 import { many } from '../db';
+import { listPhotos } from './photos';
 import { toCategory, toProperty, toSeason, toUnit, type CategoryRow, type PropertyRow, type SeasonRow, type UnitRow } from '../model';
 
 export interface Occupancy {
@@ -18,14 +19,15 @@ export interface Catalog {
   units: Unit[];
   seasons: Season[];
   occupancy: Occupancy[];
+  photos: Photo[];
 }
 
 export async function catalog(ctx: Ctx, slug?: string): Promise<Catalog> {
   const props = await many<PropertyRow>(ctx.db, `select * from properties where published ${slug ? 'and slug = $1' : ''} order by created_at`, slug ? [slug] : []);
   const ids = props.map((p) => p.id);
-  if (ids.length === 0) return { properties: [], categories: [], units: [], seasons: [], occupancy: [] };
+  if (ids.length === 0) return { properties: [], categories: [], units: [], seasons: [], occupancy: [], photos: [] };
   const since = addDays(todayIn('Asia/Bishkek', ctx.now()), -1);
-  const [categories, units, seasons, bookings, blocks] = await Promise.all([
+  const [categories, units, seasons, bookings, blocks, photos] = await Promise.all([
     many<CategoryRow>(ctx.db, 'select * from categories where property_id = any($1) order by sort, id', [ids]),
     many<UnitRow>(ctx.db, 'select * from units where property_id = any($1) order by sort, name', [ids]),
     many<SeasonRow>(ctx.db, 'select * from seasons where property_id = any($1) and date_to >= $2', [ids, since]),
@@ -41,6 +43,7 @@ export async function catalog(ctx: Ctx, slug?: string): Promise<Catalog> {
         where u.property_id = any($1) and b.date_to > $2`,
       [ids, since],
     ),
+    listPhotos(ctx, ids),
   ]);
   return {
     properties: props.map((r) => {
@@ -57,5 +60,6 @@ export async function catalog(ctx: Ctx, slug?: string): Promise<Catalog> {
     units: units.map(toUnit),
     seasons: seasons.map(toSeason),
     occupancy: [...bookings, ...blocks],
+    photos,
   };
 }

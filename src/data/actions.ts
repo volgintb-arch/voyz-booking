@@ -10,10 +10,16 @@ import { nowWithOffset } from '../domain/dates';
 import { percentOf } from '../domain/money';
 import { quoteStay } from '../domain/pricing';
 import type { Block, BookingStatus, Channel, IcalChannel, LinkSource, PaymentKind, PaymentMethod, Property } from '../domain/types';
+import { shrinkImage } from '../share/image';
 import { channelFor } from '../share/links';
 import {
   addBlock,
   addCategoryWithUnits,
+  addPhotoLocal,
+  DEMO_MAX_PHOTOS,
+  makeCoverLocal,
+  photosOf,
+  removePhotoLocal,
   addIcalChannel,
   addUnit,
   removeCategoryIfFree,
@@ -350,6 +356,31 @@ export function useActions() {
         apiMode
           ? host('PATCH', `api/host/properties/${propertyId}/aynes`, { shareGuestName: share })
           : Promise.resolve(local((s) => ({ ...s, aynes: { ...s.aynes, shareGuestName: share } }))),
+
+      // ---------- photos ----------
+      async addPhoto(propertyId: string, file: File): Promise<Result> {
+        try {
+          if (apiMode) {
+            const { dataUrl } = await shrinkImage(file, 1600, 0.82);
+            return host('POST', `api/host/properties/${propertyId}/photos`, { data: dataUrl });
+          }
+          // Demo keeps photos in the browser's small storage: smaller and fewer.
+          if (photosOf(state, propertyId).length >= DEMO_MAX_PHOTOS) return { ok: false, code: 'too_many' };
+          const { dataUrl, width, height } = await shrinkImage(file, 1024, 0.7);
+          update((s) => addPhotoLocal(s, propertyId, { url: dataUrl, width, height }));
+          return done(null);
+        } catch {
+          return { ok: false, code: 'bad_image' };
+        }
+      },
+
+      removePhoto: (id: string) => (apiMode ? host('DELETE', `api/host/photos/${id}`) : Promise.resolve(local((s) => removePhotoLocal(s, id)))),
+
+      makeCover: (propertyId: string, id: string) => {
+        if (!apiMode) return Promise.resolve(local((s) => makeCoverLocal(s, id)));
+        const ids = photosOf(state, propertyId).map((p) => p.id);
+        return host('POST', `api/host/properties/${propertyId}/photos/order`, { ids: [id, ...ids.filter((x) => x !== id)] });
+      },
 
       flushOutbox: (propertyId: string) => (apiMode ? host('POST', `api/host/properties/${propertyId}/outbox/flush`) : Promise.resolve(done(null))),
     };

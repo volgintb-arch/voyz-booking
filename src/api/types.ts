@@ -1,4 +1,4 @@
-import type { Block, Booking, Category, IcalChannel, Localized, OutboxItem, Payment, Property, Season, Unit } from '../domain/types';
+import type { Block, Booking, Category, IcalChannel, Localized, OutboxItem, Payment, Photo, Property, Season, Unit } from '../domain/types';
 
 /** Server answer for GET /api/host/state (and every host change). */
 export interface HostSnapshot {
@@ -12,6 +12,7 @@ export interface HostSnapshot {
   blocks: Block[];
   icalChannels: (IcalChannel & { lastError: string | null })[];
   outbox: OutboxItem[];
+  photos: Photo[];
   result?: unknown;
 }
 
@@ -22,6 +23,7 @@ export interface Catalog {
   units: Unit[];
   seasons: Season[];
   occupancy: { unitId: string; from: string; to: string }[];
+  photos: Photo[];
 }
 
 /** What a guest sees about their own booking. */

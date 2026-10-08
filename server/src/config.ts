@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const Env = z.object({
   DATABASE_URL: z.string().min(1),
+  DATABASE_SSL: z.enum(['auto', 'off', 'require', 'verify']).default('auto'),
   PORT: z.coerce.number().int().default(8080),
   HOST: z.string().default('0.0.0.0'),
   API_URL: z.string().url().default('http://localhost:8080/'),

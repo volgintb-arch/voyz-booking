@@ -42,6 +42,7 @@ import {
 } from '../services/host';
 import { syncChannel } from '../services/ical';
 import { flushOutbox } from '../services/outbox';
+import { addPhoto, removePhoto, reorderPhotos } from '../services/photos';
 import { z } from 'zod';
 
 type Handler = (host: HostIdentity, req: FastifyRequest) => Promise<unknown>;
@@ -60,6 +61,17 @@ export function hostRoutes(app: FastifyInstance, ctx: Ctx) {
   app.post('/api/host/properties', mutate(async (h, req) => ({ propertyId: await createProperty(ctx, h.id, NewPropertyBody.parse(req.body)) })));
   app.patch('/api/host/properties/:id', mutate((h, req) => updateProperty(ctx, h.id, id(req), PropertyPatchBody.parse(req.body))));
   app.patch('/api/host/categories/:id', mutate((h, req) => updateCategory(ctx, h.id, id(req), CategoryPatchBody.parse(req.body))));
+  // A photo is ~300 KB after the phone shrinks it; base64 adds a third.
+  app.post(
+    '/api/host/properties/:id/photos',
+    { bodyLimit: 4_000_000 },
+    mutate(async (h, req) => ({ photoId: await addPhoto(ctx, h.id, id(req), z.object({ data: z.string().max(3_600_000) }).parse(req.body).data) })),
+  );
+  app.delete('/api/host/photos/:id', mutate((h, req) => removePhoto(ctx, h.id, id(req))));
+  app.post(
+    '/api/host/properties/:id/photos/order',
+    mutate((h, req) => reorderPhotos(ctx, h.id, id(req), z.object({ ids: z.array(z.string()).max(50) }).parse(req.body).ids)),
+  );
   app.post('/api/host/properties/:id/categories', mutate(async (h, req) => ({ categoryId: await addCategory(ctx, h.id, id(req), NewCategoryBody.parse(req.body)) })));
   app.delete('/api/host/categories/:id', mutate((h, req) => removeCategory(ctx, h.id, id(req))));
   app.post('/api/host/categories/:id/units', mutate((h, req) => addUnit(ctx, h.id, id(req), UnitBody.parse(req.body).name)));

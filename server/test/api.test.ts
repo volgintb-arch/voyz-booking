@@ -265,6 +265,76 @@ describe('telegram webhook', () => {
   });
 });
 
+function fakePng(width: number, height: number): string {
+  const b = Buffer.alloc(64);
+  b.writeUInt32BE(0x89504e47, 0);
+  b.writeUInt32BE(0x0d0a1a0a, 4);
+  b.writeUInt32BE(13, 8);
+  b.write('IHDR', 12, 'ascii');
+  b.writeUInt32BE(width, 16);
+  b.writeUInt32BE(height, 20);
+  return `data:image/png;base64,${b.toString('base64')}`;
+}
+
+describe('photos', () => {
+  it('reads image sizes from JPEG, PNG and WebP headers', async () => {
+    const { imageSize } = await import('../src/services/photos');
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0, 0, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x02, 0x58, 0x03, 0x20, 0x03, 0, 0, 0, 0]);
+    expect(imageSize(jpeg, 'image/jpeg')).toEqual({ width: 800, height: 600 });
+    expect(imageSize(Buffer.from(fakePng(1600, 900).split(',')[1]!, 'base64'), 'image/png')).toEqual({ width: 1600, height: 900 });
+    expect(imageSize(Buffer.from('hello world, not an image at all'), 'image/jpeg')).toBeNull();
+  });
+
+  it('uploads, orders, serves and deletes photos; the cover becomes the link preview', async () => {
+    h = await harness({ ALLOW_DEV_LOGIN: 'true' });
+    const auth = bearer(await devToken(h));
+    type S = { photos: { id: string; url: string; propertyId: string }[] };
+    await api<S>(h, 'POST', '/api/host/properties/p-sonkul/photos', { data: fakePng(1600, 1200) }, auth);
+    const s = await api<S>(h, 'POST', '/api/host/properties/p-sonkul/photos', { data: fakePng(1200, 900) }, auth);
+    expect(s.data.photos).toHaveLength(2);
+    const [first, second] = s.data.photos as [S['photos'][0], S['photos'][0]];
+    expect(first.url).toMatch(/^https:\/\/api\.test\/photos\/ph_.+\.png$/);
+
+    const img = await h.app.inject({ method: 'GET', url: new URL(first.url).pathname });
+    expect(img.headers['content-type']).toBe('image/png');
+    expect(img.headers['cache-control']).toContain('immutable');
+
+    const re = await api<S>(h, 'POST', '/api/host/properties/p-sonkul/photos/order', { ids: [second.id, first.id] }, auth);
+    expect(re.data.photos.map((p) => p.id)).toEqual([second.id, first.id]);
+    const cat = await api<S>(h, 'GET', '/api/public/catalog');
+    expect(cat.data.photos[0]!.id).toBe(second.id);
+    const share = await h.app.inject({ method: 'GET', url: '/s/son-kul-aiyl' });
+    expect(share.body).toContain(`og:image" content="${second.url}"`);
+
+    expect((await api(h, 'POST', '/api/host/properties/p-sonkul/photos', { data: fakePng(50, 50) }, auth)).status).toBe(422);
+    expect((await api(h, 'POST', '/api/host/properties/p-sonkul/photos', { data: 'data:text/html;base64,PGgxPg==' }, auth)).status).toBe(422);
+
+    await h.db.query(`insert into sessions (token_hash, host_id, expires_at) values (encode(sha256('other'::bytea), 'hex'), 'host-2', '2030-01-01')`);
+    expect((await api(h, 'DELETE', `/api/host/photos/${first.id}`, undefined, bearer('other'))).status).toBe(404);
+    const del = await api<S>(h, 'DELETE', `/api/host/photos/${first.id}`, undefined, auth);
+    expect(del.data.photos.map((p) => p.id)).toEqual([second.id]);
+  });
+});
+
+describe('database lock-down', () => {
+  it('turns on row level security for every table (our server owns them and still works)', async () => {
+    h = await harness();
+    const r = await h.db.query(`select count(*)::int as n from pg_tables where schemaname = 'public' and not rowsecurity`);
+    expect(r.rows[0].n).toBe(0);
+  });
+});
+
+describe('database connection', () => {
+  it('encrypts Supabase connections and leaves local ones alone', async () => {
+    const { poolConfig } = await import('../src/db');
+    const sb = poolConfig('postgresql://postgres.abc:pw@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=require');
+    expect(sb.ssl).toEqual({ rejectUnauthorized: false });
+    expect(sb.connectionString).not.toContain('sslmode');
+    expect(poolConfig('postgres://voyz:voyz@localhost:5432/voyz').ssl).toBeUndefined();
+    expect(poolConfig('postgres://u:p@db.example.kg:5432/voyz', 'verify').ssl).toBe(true);
+  });
+});
+
 describe('config', () => {
   it('keeps the webhook path URL-safe whatever the generated secret is', () => {
     expect(webhookId('a/b+c==')).toMatch(/^[0-9a-f]{48}$/);

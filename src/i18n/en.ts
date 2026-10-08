@@ -360,6 +360,17 @@ export const en: Dict = {
     confirmDeleteUnit: (name) => `Delete “${name}”?`,
     hasBookings: 'Cannot delete: it has bookings. Close the dates instead.',
   },
+  photos: {
+    title: 'Photos',
+    hint: 'The first photo is the cover: guests see it in search and in link previews. Tap a photo to make it the cover or delete it.',
+    add: 'Add photos',
+    uploading: (done, total) => `Uploading ${done} of ${total}…`,
+    cover: 'Cover',
+    makeCover: 'Make cover',
+    confirmDelete: 'Delete this photo?',
+    tooMany: 'Demo mode keeps up to 6 photos',
+    badImage: 'Could not upload this photo — try another one',
+  },
   settings: {
     prices: 'Prices',
     rules: 'Deposit and cancellation',

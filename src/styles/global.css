@@ -433,3 +433,20 @@ code { font-size: 13px; }
   .hero .wordmark { font-size: 56px; bottom: 18px; }
   .tile .photo .cover { aspect-ratio: 16 / 7; }
 }
+
+/* ---------- Photos ---------- */
+img.cover.photo { object-fit: cover; background: var(--soft); }
+.gallery { position: relative; }
+.galleryTrack { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: var(--r-xl); }
+.galleryTrack::-webkit-scrollbar { display: none; }
+.galleryTrack img { flex: 0 0 100%; scroll-snap-align: start; }
+.galleryCount {
+  position: absolute; right: 14px; bottom: 14px; background: rgb(0 0 0 / 0.55); color: #fff;
+  font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: var(--pill);
+}
+.photoGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.photoCell { position: relative; aspect-ratio: 1; border-radius: 18px; overflow: hidden; background: var(--soft); border: 0; padding: 0; cursor: pointer; }
+.photoCell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photoCell[aria-pressed='true'] { outline: 3px solid var(--lime); outline-offset: 2px; }
+.photoCell .badge { position: absolute; left: 6px; top: 6px; }
+.photoAdd { display: grid; place-items: center; aspect-ratio: 1; border-radius: 18px; border: 1.5px dashed var(--line); color: var(--muted); cursor: pointer; text-align: center; font-size: 13px; padding: 8px; }

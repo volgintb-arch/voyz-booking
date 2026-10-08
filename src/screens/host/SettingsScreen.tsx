@@ -32,6 +32,7 @@ export function SettingsScreen() {
   const saved = (r: Result) => toast.show(r.ok ? t.common.saved : r.code === 'offline' ? t.common.offline : t.common.serverDown);
   return (
     <Screen title={t.host.tabSettings} back="/" tabs={hostTabs(t)}>
+      {apiMode && <AccountStrip />}
       {property ? (
         <>
           <PropertySwitch properties={properties} value={property} onChange={select} />
@@ -522,15 +523,37 @@ function Demo() {
   );
 }
 
-function Account() {
-  const { state, reset } = useStore();
-  const { t } = useT();
-  const logout = async () => {
+function useLogout() {
+  const { reset } = useStore();
+  return async () => {
     await call('POST', 'api/auth/logout', {}, { auth: true }).catch(() => undefined);
     hostToken.set(null);
     reset();
     window.location.hash = '#/';
   };
+}
+
+/** Who is signed in, with a visible way out (demo or Telegram account). */
+function AccountStrip() {
+  const { state } = useStore();
+  const { t } = useT();
+  const logout = useLogout();
+  return (
+    <div className="accountStrip">
+      <span>
+        {t.settings.signedInShort} <b>{state.host?.name ?? ''}</b>
+      </span>
+      <button type="button" className="btn small outline" onClick={logout}>
+        {t.settings.logout}
+      </button>
+    </div>
+  );
+}
+
+function Account() {
+  const { state } = useStore();
+  const { t } = useT();
+  const logout = useLogout();
   return (
     <>
       <p className="small">{t.settings.signedInAs(state.host?.name ?? '')}</p>

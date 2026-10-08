@@ -397,6 +397,7 @@ export const ky: Dict = {
     synced: 'Календарь жаңыртылды',
     account: 'Аккаунт',
     signedInAs: (name) => `Сиз Telegram аркылуу ${name} катары кирдиңиз`,
+    signedInShort: 'Сиз кирдиңиз:',
     logout: 'Чыгуу',
     aynesIntro: 'Брондоолор жана төлөмдөр Aynes’ке өзү жөнөтүлөт: акча, коноктордун аванстары, сезондун пайдасы.',
     key: 'Aynes ачкычы (fsk_…)',

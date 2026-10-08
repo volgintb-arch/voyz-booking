@@ -399,3 +399,29 @@ code { font-size: 13px; }
 
 /* Inside the site widget the host page draws a close button at the top right */
 .embedded .header { padding-right: 68px; }
+
+/* ---------- Wide screens (computer, tablet) ----------
+   The phone layout stays; the column gets wider, rows of chips wrap instead of
+   scrolling sideways, and the tab bar sits under the header so it never covers
+   buttons. */
+@media (min-width: 760px) {
+  .app { max-width: 760px; }
+  .chips { flex-wrap: wrap; overflow: visible; }
+  .withTabs .content { padding-bottom: 32px; }
+  .tabbar {
+    position: sticky; top: calc(76px + env(safe-area-inset-top)); bottom: auto; z-index: 9;
+    padding: 0 20px 8px; background: rgb(255 255 255 / 0.92); backdrop-filter: blur(10px);
+  }
+  .tabbar nav { max-width: none; height: 60px; box-shadow: none; }
+  .tabbar a { width: auto; height: 48px; border-radius: var(--pill); padding: 0 18px; gap: 8px; display: inline-flex; align-items: center; }
+  .tabbar a::after { content: attr(title); font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .bookbar > div { border-radius: 32px 32px 0 0; }
+  .toast { bottom: 32px; }
+}
+
+/* Signed-in host strip */
+.accountStrip {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 10px 10px 20px; border-radius: var(--pill); background: var(--soft); font-size: 15px;
+}
+.accountStrip b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

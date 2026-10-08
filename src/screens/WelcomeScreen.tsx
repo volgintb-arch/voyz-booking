@@ -2,10 +2,19 @@ import { Link } from 'react-router-dom';
 import { Cover } from '../components/Cover';
 import { Icon } from '../components/Icon';
 import { LangSwitch } from '../components/Layout';
+import { apiMode, call, hostToken } from '../api/client';
+import { useStore } from '../data/store';
 import { useT } from '../i18n';
 
 export function WelcomeScreen() {
   const { t } = useT();
+  const { state, reset } = useStore();
+  const signedIn = apiMode && hostToken.get() !== null;
+  const logout = async () => {
+    await call('POST', 'api/auth/logout', {}, { auth: true }).catch(() => undefined);
+    hostToken.set(null);
+    reset();
+  };
   return (
     <div className="app">
       <header className="header">
@@ -46,7 +55,17 @@ export function WelcomeScreen() {
           </h2>
           <p>{t.welcome.bandText}</p>
         </div>
-        <p className="muted small center">{t.common.demo}</p>
+        {signedIn && (
+          <div className="accountStrip">
+            <span>
+              {t.settings.signedInShort} <b>{state.host?.name ?? ''}</b>
+            </span>
+            <button type="button" className="btn small outline" onClick={logout}>
+              {t.settings.logout}
+            </button>
+          </div>
+        )}
+        {!apiMode && <p className="muted small center">{t.common.demo}</p>}
       </main>
     </div>
   );

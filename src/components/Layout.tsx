@@ -58,8 +58,6 @@ export function Screen({ title, back, tabs, bar, children }: ScreenProps) {
         <h1>{title}</h1>
         <LangSwitch />
       </header>
-      {!online && <div className="banner">{t.common.offline}</div>}
-      <main className="content">{children}</main>
       {tabs && !bar && (
         <div className="tabbar">
           <nav>
@@ -78,6 +76,8 @@ export function Screen({ title, back, tabs, bar, children }: ScreenProps) {
           </nav>
         </div>
       )}
+      {!online && <div className="banner">{t.common.offline}</div>}
+      <main className="content">{children}</main>
       {bar && (
         <div className="bookbar">
           <div>{bar}</div>

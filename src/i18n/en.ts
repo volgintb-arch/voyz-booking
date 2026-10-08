@@ -398,6 +398,7 @@ export const en: Dict = {
     synced: 'Calendar updated',
     account: 'Account',
     signedInAs: (name) => `Signed in as ${name} via Telegram`,
+    signedInShort: 'Signed in:',
     logout: 'Sign out',
     aynesIntro: 'Bookings and payments flow to Aynes on their own: cash, guest deposits, season profit.',
     key: 'Aynes key (fsk_…)',

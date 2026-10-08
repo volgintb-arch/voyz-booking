@@ -418,6 +418,7 @@ export const ru = {
     synced: 'Календарь обновлён',
     account: 'Аккаунт',
     signedInAs: (name: string) => `Вы вошли как ${name} через Telegram`,
+    signedInShort: 'Вы вошли:',
     logout: 'Выйти',
     aynesIntro: 'Брони и оплаты сами уходят в Aynes: деньги, авансы гостей, прибыль сезона.',
     key: 'Ключ Aynes (fsk_…)',

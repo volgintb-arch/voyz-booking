@@ -9,6 +9,7 @@ import type { Category, IcalChannel, PaymentMethod, Property } from '../../domai
 import { apiMode, call, hostToken } from '../../api/client';
 import { aynesOf, useActions, type Result } from '../../data/actions';
 import { useStore } from '../../data/store';
+import { copyText } from '../../share/clipboard';
 import { useT } from '../../i18n';
 import { PaymentSettings } from './PaymentSettings';
 import { PropertySwitch } from './PropertySwitch';
@@ -67,7 +68,7 @@ export function SettingsScreen() {
             <ClosedDates key={property.id} property={property} />
           </Section>
           <Section icon="grid" title={t.settings.ical}>
-            <Ical key={property.id} property={property} />
+            <Ical key={property.id} property={property} notify={toast.show} />
           </Section>
           <Section icon="sparkle" title={t.settings.aynes}>
             <Aynes key={property.id} property={property} />
@@ -336,7 +337,7 @@ function ClosedDates({ property }: { property: Property }) {
   );
 }
 
-function Ical({ property }: { property: Property }) {
+function Ical({ property, notify }: { property: Property; notify: (text: string) => void }) {
   const { state } = useStore();
   const actions = useActions();
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
@@ -357,14 +358,32 @@ function Ical({ property }: { property: Property }) {
 
   return (
     <>
+      <p className="small">{t.settings.icalWhy}</p>
       <strong>{t.settings.exportTitle}</strong>
       <p className="muted small">{t.settings.exportHint}</p>
-      {units.map((u) => (
-        <div key={u.id} className="stack" style={{ gap: 2 }}>
-          <span className="small strong">{u.name}</span>
-          <code className="small" style={{ wordBreak: 'break-all' }}>{state.icalUrls?.[u.id] ?? t.settings.exportAfterServer}</code>
-        </div>
-      ))}
+      {units.map((u) => {
+        const link = state.icalUrls?.[u.id];
+        return (
+          <div key={u.id} className="stack" style={{ gap: 4 }}>
+            <span className="small strong">{u.name}</span>
+            {link ? (
+              <div className="linkBox">
+                <code>{link.replace(/^https?:\/\//, '')}</code>
+                <button
+                  type="button"
+                  className="roundBtn lime small"
+                  aria-label={t.promo.copy}
+                  onClick={async () => notify((await copyText(link)) ? t.promo.copied : t.promo.copyFailed)}
+                >
+                  <Icon name="copy" size={18} />
+                </button>
+              </div>
+            ) : (
+              <span className="muted small">{t.settings.exportAfterServer}</span>
+            )}
+          </div>
+        );
+      })}
       <strong style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 14 }}>{t.settings.importTitle}</strong>
       <p className="muted small">{t.settings.importHint}</p>
       {channels.map((c) => (

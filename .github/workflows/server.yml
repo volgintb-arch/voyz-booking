@@ -1,0 +1,45 @@
+name: Server — tests
+
+on:
+  push:
+    branches: [main]
+    paths: ['server/**', 'src/domain/**', 'src/integrations/**', 'src/data/seed.ts', '.github/workflows/server.yml']
+  pull_request:
+    paths: ['server/**', 'src/domain/**', 'src/integrations/**', 'src/data/seed.ts', '.github/workflows/server.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: voyz
+          POSTGRES_PASSWORD: voyz
+          POSTGRES_DB: voyz_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U voyz" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL_TEST: postgres://voyz:voyz@localhost:5432/voyz_test
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Docker image builds
+        working-directory: .
+        run: docker build -f server/Dockerfile -t voyz-booking-server .

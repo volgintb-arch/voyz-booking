@@ -1,0 +1,41 @@
+# Pilot deployment on Render (D-006). Render → New → Blueprint → this repository.
+# Production in Kyrgyzstan uses the same Docker image on a VPS.
+databases:
+  - name: voyz-db
+    plan: free
+    region: frankfurt
+    databaseName: voyz
+    user: voyz
+
+services:
+  - type: web
+    name: voyz-booking-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: voyz-db
+          property: connectionString
+      - key: SERVER_SECRET
+        generateValue: true
+      - key: TELEGRAM_WEBHOOK_SECRET
+        generateValue: true
+      - key: APP_URL
+        value: https://volgintb-arch.github.io/voyz-booking/
+      - key: CORS_ORIGINS
+        value: https://volgintb-arch.github.io,capacitor://localhost,http://localhost,https://localhost
+      - key: API_URL
+        sync: false # https://<service>.onrender.com/ after the first deploy
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false # from @BotFather
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false
+      - key: ALLOW_DEV_LOGIN
+        value: "true" # pilot demo only; set to false for real hosts
+      - key: AYNES_API_URL
+        value: https://aynes.pro

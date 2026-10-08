@@ -59,5 +59,5 @@ Variables → New repository variable**:
 |---|---|
 | `DATABASE_URL` | адрес базы PostgreSQL |
 | `SERVER_SECRET` | длинная случайная строка, шифрует ключи Aynes |
-| `ALLOW_DEV_LOGIN` | `true` — кнопка «Демо-вход» без Telegram. Для реальных хозяев — `false` |
+| `ALLOW_DEV_LOGIN` | `true` — кнопка «Демо-вход» и 4 демо-объекта. `false` (для реальных хозяев) — демо-объекты удаляются при запуске сервера |
 | `CORS_ORIGINS` | с каких адресов приложение может обращаться к серверу |

@@ -83,3 +83,92 @@ export const BOT = {
 export function botCopy(lang: string) {
   return BOT[(lang in BOT ? lang : 'ru') as Lang];
 }
+
+// ---------- Guests (no account: they follow one booking after tapping the link) ----------
+
+export type GuestEvent = 'linked' | 'confirmed' | 'declined' | 'expired' | 'extended' | 'deposit' | 'reminder';
+
+const GUEST = {
+  ru: {
+    event: {
+      linked: '🔔 Готово! Сюда придут новости о вашей брони.',
+      confirmed: '✅ Хозяин подтвердил бронь',
+      declined: '✖️ Хозяин отменил бронь',
+      expired: '⌛ Бронь снята: предоплата не поступила вовремя',
+      extended: '⏳ Хозяин продлил срок оплаты',
+      deposit: '💰 Хозяин получил предоплату',
+      reminder: '⏰ Бронь скоро снимется — осталось внести предоплату',
+    },
+    status: {
+      pending: 'Статус: ждёт подтверждения хозяина',
+      confirmed: 'Статус: подтверждена',
+      checked_in: 'Статус: вы заселились',
+      checked_out: 'Статус: выезд',
+      cancelled: 'Статус: отменена',
+      no_show: 'Статус: незаезд',
+    },
+    booking: (id: string) => `Бронь ${id}`,
+    times: (inTime: string, outTime: string) => `Заезд с ${inTime}, выезд до ${outTime}`,
+    due: (x: string, until: string) => `Предоплата ${x}${until ? ` — оплатите до ${until}` : ''}`,
+    payTo: (recipient: string, details: string) => `Получатель: ${[recipient, details].filter(Boolean).join(' · ')}`,
+    comment: (id: string) => `Комментарий к переводу: ${id}`,
+    open: 'Открыть бронь',
+    linkExpired: 'Ссылка устарела. Откройте бронь в приложении и нажмите «Следить за бронью в Telegram» ещё раз.',
+  },
+  ky: {
+    event: {
+      linked: '🔔 Даяр! Брондооңуз тууралуу жаңылыктар ушул жерге келет.',
+      confirmed: '✅ Ээси брондоону ырастады',
+      declined: '✖️ Ээси брондоону жокко чыгарды',
+      expired: '⌛ Брондоо алынды: алдын ала төлөм убагында келген жок',
+      extended: '⏳ Ээси төлөө мөөнөтүн узартты',
+      deposit: '💰 Ээси алдын ала төлөмдү алды',
+      reminder: '⏰ Брондоо жакында алынат — алдын ала төлөм калды',
+    },
+    status: {
+      pending: 'Абалы: ээсинин ырастоосун күтүүдө',
+      confirmed: 'Абалы: ырасталды',
+      checked_in: 'Абалы: жайгаштыңыз',
+      checked_out: 'Абалы: чыгуу',
+      cancelled: 'Абалы: жокко чыгарылды',
+      no_show: 'Абалы: келген жок',
+    },
+    booking: (id: string) => `Брондоо ${id}`,
+    times: (inTime: string, outTime: string) => `Келүү ${inTime} баштап, кетүү ${outTime} чейин`,
+    due: (x: string, until: string) => `Алдын ала төлөм ${x}${until ? ` — ${until} чейин төлөңүз` : ''}`,
+    payTo: (recipient: string, details: string) => `Алуучу: ${[recipient, details].filter(Boolean).join(' · ')}`,
+    comment: (id: string) => `Которуудагы комментарий: ${id}`,
+    open: 'Брондоону ачуу',
+    linkExpired: 'Шилтеме эскирди. Тиркемеден брондоону ачып, «Брондоону Telegram аркылуу көзөмөлдөө» баскычын кайра басыңыз.',
+  },
+  en: {
+    event: {
+      linked: '🔔 Done! News about your booking will arrive here.',
+      confirmed: '✅ The host confirmed your booking',
+      declined: '✖️ The host cancelled the booking',
+      expired: '⌛ Booking released: the deposit did not arrive in time',
+      extended: '⏳ The host extended the payment deadline',
+      deposit: '💰 The host received your deposit',
+      reminder: '⏰ Your booking will be released soon — the deposit is still due',
+    },
+    status: {
+      pending: 'Status: waiting for the host',
+      confirmed: 'Status: confirmed',
+      checked_in: 'Status: checked in',
+      checked_out: 'Status: checked out',
+      cancelled: 'Status: cancelled',
+      no_show: 'Status: no-show',
+    },
+    booking: (id: string) => `Booking ${id}`,
+    times: (inTime: string, outTime: string) => `Check-in from ${inTime}, check-out by ${outTime}`,
+    due: (x: string, until: string) => `Deposit ${x}${until ? ` — pay by ${until}` : ''}`,
+    payTo: (recipient: string, details: string) => `Recipient: ${[recipient, details].filter(Boolean).join(' · ')}`,
+    comment: (id: string) => `Transfer comment: ${id}`,
+    open: 'Open booking',
+    linkExpired: 'This link has expired. Open the booking in the app and tap “Follow in Telegram” again.',
+  },
+} satisfies Record<Lang, unknown>;
+
+export function guestCopy(lang: string) {
+  return GUEST[(lang in GUEST ? lang : 'ru') as Lang];
+}

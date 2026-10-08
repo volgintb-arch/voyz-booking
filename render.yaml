@@ -33,7 +33,9 @@ services:
         sync: false # from @BotFather
       - key: TELEGRAM_BOT_USERNAME
         sync: false
+      - key: SENTRY_DSN
+        sync: false # error reports, docs/MONITORING.md; empty — off
       - key: ALLOW_DEV_LOGIN
-        value: "true" # pilot demo only; set to false for real hosts
+        value: "false" # "true" brings back the demo sign-in and the four demo properties
       - key: AYNES_API_URL
         value: https://aynes.pro

@@ -5,6 +5,7 @@ import type {
   Booking,
   Category,
   IcalChannel,
+  Lang,
   Localized,
   OutboxItem,
   Payment,
@@ -187,6 +188,10 @@ export interface BookingRow {
   hold_until: string | null;
   guest_reported_paid_at: string | null;
   guest_token_hash: string | null;
+  guest_chat_id: string | null;
+  guest_lang: Lang;
+  guest_link_code: string | null;
+  guest_token_enc: string | null;
 }
 
 export const toBooking = (r: BookingRow): Booking => ({

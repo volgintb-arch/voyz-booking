@@ -34,4 +34,6 @@ export interface GuestView {
   payment: { qrImage: string | null; recipient: string; details: string };
   categoryName: Localized;
   refundIfCancelled: number;
+  /** Follow the booking in the Telegram bot (server mode only). */
+  telegram: { available: boolean; linked: boolean };
 }

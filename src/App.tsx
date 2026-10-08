@@ -3,6 +3,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { StoreProvider } from './data/store';
 import { BookScreen } from './screens/guest/BookScreen';
 import { DoneScreen } from './screens/guest/DoneScreen';
+import { OpenTripScreen } from './screens/guest/OpenTripScreen';
 import { PayScreen } from './screens/guest/PayScreen';
 import { PropertyScreen } from './screens/guest/PropertyScreen';
 import { SearchScreen } from './screens/guest/SearchScreen';
@@ -35,6 +36,7 @@ export function App() {
             <Route path="/guest/pay/:id" element={<PayScreen />} />
             <Route path="/guest/done/:id" element={<DoneScreen />} />
             <Route path="/guest/trips" element={<TripsScreen />} />
+            <Route path="/guest/open/:id" element={<OpenTripScreen />} />
           </Route>
           <Route element={<HostGate />}>
             <Route path="/host" element={<BoardScreen />} />

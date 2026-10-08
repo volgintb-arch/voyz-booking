@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { FollowInTelegram } from '../../components/FollowInTelegram';
 import { Icon } from '../../components/Icon';
 import { Screen } from '../../components/Layout';
 import { useToast } from '../../components/Toast';
@@ -16,7 +17,7 @@ export function PayScreen() {
   const actions = useActions();
   const { t, lang, fmtInstant } = useT();
   const toast = useToast();
-  const { view, loading } = useGuestView(id);
+  const { view, loading, reload } = useGuestView(id);
   const [busy, setBusy] = useState(false);
 
   if (!view) {
@@ -105,6 +106,7 @@ export function PayScreen() {
           </button>
         </div>
       )}
+      <FollowInTelegram view={view} onReturn={reload} />
       {toast.node}
     </Screen>
   );

@@ -7,9 +7,9 @@ import { bookingMoney } from '../../../src/domain/ledger';
 import { percentOf } from '../../../src/domain/money';
 import { quoteStay, refundOnCancel, validateStay } from '../../../src/domain/pricing';
 import { NEXT_STATUSES } from '../../../src/domain/status';
-import type { Booking, BookingStatus, CancelReason, Channel, LinkSource, Payment, PaymentKind, PaymentMethod } from '../../../src/domain/types';
+import type { Booking, BookingStatus, CancelReason, Channel, Lang, LinkSource, Payment, PaymentKind, PaymentMethod } from '../../../src/domain/types';
 import type { Ctx } from '../context';
-import { randomToken, sha256 } from '../crypto';
+import { encrypt, randomToken, sha256 } from '../crypto';
 import { many, one, tx, type Queryable, type Tx } from '../db';
 import { ApiError, notFound } from '../http';
 import { loadBundle, toBooking, toPayment, type BookingRow, type PaymentRow, type PropertyRow } from '../model';
@@ -219,13 +219,16 @@ async function writeStatus(c: Tx, booking: Booking, status: BookingStatus, now: 
 }
 
 export async function setStatus(ctx: Ctx, hostId: string, bookingId: string, status: BookingStatus): Promise<Booking> {
-  return tx(ctx.db, async (c) => {
+  const updated = await tx(ctx.db, async (c) => {
     const { booking } = await ownedBooking(c, hostId, bookingId);
     if (!NEXT_STATUSES[booking.status].includes(status)) {
       throw new ApiError('conflict', `Cannot change ${booking.status} to ${status}`, { allowed: NEXT_STATUSES[booking.status] });
     }
     return writeStatus(c, booking, status, ctx.now().toISOString(), status === 'cancelled' ? 'host' : null);
   });
+  if (status === 'confirmed') await ctx.notify.guestUpdate(bookingId, 'confirmed');
+  if (status === 'cancelled') await ctx.notify.guestUpdate(bookingId, 'declined');
+  return updated;
 }
 
 async function insertPayment(c: Tx, p: Omit<Payment, 'id'>, propertyId: string): Promise<Payment> {
@@ -271,7 +274,7 @@ export async function addHostPayment(ctx: Ctx, hostId: string, bookingId: string
 
 /** "Деньги пришли": record the missing deposit and confirm a pending booking (D-001). */
 export async function confirmDeposit(ctx: Ctx, hostId: string, bookingId: string, method: PaymentMethod): Promise<Booking> {
-  return tx(ctx.db, async (c) => {
+  const { booking, event } = await tx(ctx.db, async (c) => {
     const { booking } = await ownedBooking(c, hostId, bookingId);
     if (booking.status === 'cancelled' || booking.status === 'no_show') throw new ApiError('conflict', 'Booking is cancelled');
     const due = Math.max(0, booking.prepaymentDue - bookingMoney(booking, await paymentsOf(c, bookingId)).paid);
@@ -283,12 +286,15 @@ export async function confirmDeposit(ctx: Ctx, hostId: string, bookingId: string
         booking.propertyId,
       );
     }
-    return booking.status === 'pending' ? writeStatus(c, booking, 'confirmed', now, null) : booking;
+    if (booking.status === 'pending') return { booking: await writeStatus(c, booking, 'confirmed', now, null), event: 'confirmed' as const };
+    return { booking, event: due > 0 ? ('deposit' as const) : null };
   });
+  if (event) await ctx.notify.guestUpdate(bookingId, event);
+  return booking;
 }
 
 export async function extendHold(ctx: Ctx, hostId: string, bookingId: string, hours: number): Promise<Booking> {
-  return tx(ctx.db, async (c) => {
+  const extended = await tx(ctx.db, async (c) => {
     const { booking } = await ownedBooking(c, hostId, bookingId);
     if (booking.status !== 'pending' || !booking.holdUntil) throw new ApiError('conflict', 'Booking is not on hold');
     const base = Math.max(Date.parse(booking.holdUntil), ctx.now().getTime());
@@ -298,6 +304,8 @@ export async function extendHold(ctx: Ctx, hostId: string, bookingId: string, ho
     ]);
     return toBooking(row!);
   });
+  await ctx.notify.guestUpdate(bookingId, 'extended');
+  return extended;
 }
 
 // ---------- Guest side (authorised by the token given at booking time) ----------
@@ -316,6 +324,8 @@ export interface GuestView {
   payment: { qrImage: string | null; recipient: string; details: string };
   categoryName: PropertyRow['name'];
   refundIfCancelled: number;
+  /** Follow the booking in the Telegram bot (available: the server has a bot). */
+  telegram: { available: boolean; linked: boolean };
 }
 
 export async function guestView(ctx: Ctx, bookingId: string, token: string): Promise<GuestView> {
@@ -344,6 +354,7 @@ export async function guestView(ctx: Ctx, bookingId: string, token: string): Pro
       booking.checkIn,
       todayIn(p.timezone, ctx.now()),
     ),
+    telegram: { available: ctx.config.TELEGRAM_BOT_USERNAME !== '', linked: row.guest_chat_id !== null },
   };
 }
 
@@ -391,7 +402,51 @@ export async function expireHolds(ctx: Ctx): Promise<Booking[]> {
     }
     return out;
   });
-  for (const e of expired) await ctx.notify.holdExpired(e.ownerId, e.booking);
+  for (const e of expired) {
+    await ctx.notify.holdExpired(e.ownerId, e.booking);
+    await ctx.notify.guestUpdate(e.booking.id, 'expired');
+  }
   return expired.map((e) => e.booking);
+}
+
+/** One reminder to a guest who follows the booking in Telegram: less than an hour left to pay. */
+export async function remindHolds(ctx: Ctx): Promise<number> {
+  const now = ctx.now();
+  const rows = await many<BookingRow>(
+    ctx.db,
+    `select * from bookings where status = 'pending' and guest_chat_id is not null and guest_reported_paid_at is null
+        and hold_until > $1 and hold_until <= $2`,
+    [now.toISOString(), new Date(now.getTime() + 3_600_000).toISOString()],
+  );
+  let sent = 0;
+  for (const row of rows) {
+    const booking = toBooking(row);
+    if (bookingMoney(booking, await paymentsOf(ctx.db, booking.id)).paid >= booking.prepaymentDue) continue;
+    // A new deadline (the host extended it) earns a new reminder.
+    const key = `hold-reminder:${booking.id}:${booking.holdUntil}`;
+    const fresh = await ctx.db.query('insert into notification_log(key) values ($1) on conflict do nothing', [key]);
+    if (!fresh.rowCount) continue;
+    await ctx.notify.guestUpdate(booking.id, 'reminder');
+    sent++;
+  }
+  return sent;
+}
+
+/**
+ * t.me link that lets the guest follow this booking in the bot. The code stays the
+ * same until used, so every screen shows the same link.
+ */
+export async function guestTelegramLink(ctx: Ctx, bookingId: string, token: string, lang: Lang): Promise<{ url: string; linked: boolean }> {
+  const bot = ctx.config.TELEGRAM_BOT_USERNAME;
+  if (!bot) throw new ApiError('conflict', 'Telegram bot is not configured');
+  const row = await guestBooking(ctx.db, bookingId, token);
+  const code = row.guest_link_code ?? randomToken(16);
+  await ctx.db.query('update bookings set guest_link_code = $2, guest_lang = $3, guest_token_enc = $4 where id = $1', [
+    bookingId,
+    code,
+    lang,
+    encrypt(token, ctx.config.SERVER_SECRET, 'guest-token'),
+  ]);
+  return { url: `https://t.me/${bot}?start=g_${code}`, linked: row.guest_chat_id !== null };
 }
 

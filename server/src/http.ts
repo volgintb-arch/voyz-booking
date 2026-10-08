@@ -1,5 +1,6 @@
 import type { FastifyReply } from 'fastify';
 import { ZodError } from 'zod';
+import { reportError } from './monitoring';
 
 /** Error codes shared with the app (envelope { ok: false, error: { code, message, details } }). */
 export type ErrorCode =
@@ -40,7 +41,7 @@ export function ok<T>(reply: FastifyReply, data: T, status = 200) {
   return reply.status(status).send({ ok: true, data });
 }
 
-export function sendError(reply: FastifyReply, err: unknown) {
+export function sendError(reply: FastifyReply, err: unknown, route?: string) {
   if (err instanceof ApiError) {
     return reply.status(err.status).send({ ok: false, error: { code: err.code, message: err.message, details: err.details } });
   }
@@ -55,6 +56,7 @@ export function sendError(reply: FastifyReply, err: unknown) {
     return reply.status(e.statusCode).send({ ok: false, error: { code: 'bad_request', message: e.message ?? 'Bad request' } });
   }
   reply.log.error(err);
+  reportError(err, { route });
   return reply.status(500).send({ ok: false, error: { code: 'internal', message: 'Internal error' } });
 }
 

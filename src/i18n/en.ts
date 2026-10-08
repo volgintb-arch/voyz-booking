@@ -149,6 +149,11 @@ export const en: Dict = {
     reported: 'You reported the payment — the host will check it and confirm the booking.',
     expired: 'Booking released: the deposit did not arrive in time.',
   },
+  follow: {
+    button: 'Follow in Telegram',
+    hint: 'The bot will tell you when the host confirms and remind you about the deposit.',
+    linked: 'Booking updates arrive in Telegram',
+  },
   done: {
     title: 'Booking sent to the host',
     number: (id) => `Booking number: ${id}`,
@@ -421,6 +426,7 @@ export const en: Dict = {
     badKey: 'The key starts with fsk_',
     connect: 'Connect',
     connected: (hint) => `Connected · key …${hint}`,
+    aynesMapping: 'Once in Aynes: Bookings → Booking settings → map the property to a unit. Property code:',
     disconnect: 'Disconnect',
     shareName: 'Send guest name',
     shareNameHint: 'Guest phones and documents are never sent to Aynes.',

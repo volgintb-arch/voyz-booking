@@ -22,7 +22,7 @@ export async function buildApp(ctx: Ctx, api: TelegramApi, opts: { logger?: bool
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   });
   await app.register(rateLimit, { global: false });
-  app.setErrorHandler((err, _req, reply) => sendError(reply, err));
+  app.setErrorHandler((err, req, reply) => sendError(reply, err, `${req.method} ${req.routeOptions.url ?? '?'}`));
   app.setNotFoundHandler((_req, reply) => reply.status(404).send({ ok: false, error: { code: 'not_found', message: 'Not found' } }));
 
   shareRoutes(app, ctx);

@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { api, bearer, devToken, harness, type Harness } from './helpers';
 import { createHmac } from 'node:crypto';
 import { verifyWebAppInitData } from '../src/services/auth';
-import { webhookId } from '../src/services/telegram';
-import { expireHolds } from '../src/services/bookings';
+import { upsertTelegramHost, webhookId } from '../src/services/telegram';
+import { removeDemo } from '../src/demo';
+import { expireHolds, remindHolds } from '../src/services/bookings';
 import { flushOutbox } from '../src/services/outbox';
 import { parseIcs } from '../src/services/ical';
 
@@ -131,6 +132,17 @@ describe('host', () => {
     expect(s.data.units.some((u) => u.categoryId === vip.id)).toBe(false);
   });
 
+  it('removes the demo properties but never a real host', async () => {
+    h = await harness();
+    const real = await upsertTelegramHost(h.db, { id: 777, first_name: 'Айбек' });
+    await h.db.query(`update properties set owner_id = $1 where id = 'p-sonkul'`, [real.id]);
+    expect(await removeDemo(h.db)).toBe(3);
+    const left = await h.db.query<{ id: string }>('select id from properties');
+    expect(left.rows.map((r) => r.id)).toEqual(['p-sonkul']);
+    expect((await h.db.query(`select 1 from hosts where id in ('host-1', 'host-2')`)).rowCount).toBe(0);
+    expect(await removeDemo(h.db)).toBe(0);
+  });
+
   it('keeps dev login off unless explicitly allowed', async () => {
     h = await harness();
     expect((await api(h, 'POST', '/api/auth/dev')).status).toBe(403);
@@ -205,6 +217,15 @@ describe('Aynes outbox', () => {
     await flushOutbox(h.ctx);
     const failed = await h.db.query(`select count(*)::int as n from outbox where status = 'failed'`);
     expect(failed.rows[0].n).toBeGreaterThan(0);
+  });
+
+  it('treats "Aynes already has a newer version" as delivered', async () => {
+    h = await harness({ ALLOW_DEV_LOGIN: 'true' });
+    const auth = bearer(await devToken(h));
+    h.respond.set('aynes.test', () => Response.json({ ok: false, error: { code: 'conflict', details: { currentVersion: 99 } } }, { status: 409 }));
+    await api(h, 'PUT', '/api/host/properties/p-sonkul/aynes', { key: 'fsk_live_abcdef123456' }, auth);
+    const left = await h.db.query(`select count(*)::int as n from outbox where status <> 'sent' and path not like '%/payments/%'`);
+    expect(left.rows[0].n).toBe(0);
   });
 });
 
@@ -360,5 +381,63 @@ describe('Telegram Mini App sign-in', () => {
     expect(verifyWebAppInitData(params.toString(), token, 3600, 1800000100)).toMatchObject({ id: 42 });
     params.set('user', JSON.stringify({ id: 43, first_name: 'X' }));
     expect(verifyWebAppInitData(params.toString(), token, 3600, 1800000100)).toBeNull();
+  });
+});
+
+describe('guest follows the booking in Telegram', () => {
+  const start = (h: Harness, text: string, chat = 4242) =>
+    h.app.inject({
+      method: 'POST',
+      url: `/api/telegram/webhook/${webhookId('hook')}`,
+      payload: { message: { chat: { id: chat }, from: { id: chat, first_name: 'Guest', language_code: 'en' }, text } },
+    });
+  const sent = (h: Harness, chat: number) =>
+    h.calls.filter((c) => c.url.endsWith('/sendMessage') && (c.body as { chat_id: number }).chat_id === chat) as {
+      body: { text: string; reply_markup?: { inline_keyboard: { url?: string }[][] } };
+    }[];
+
+  it('links by a one-time code and hears about confirmation, never becoming a host', async () => {
+    h = await harness({ ALLOW_DEV_LOGIN: 'true' }, { realNotifier: true });
+    const r = await api<BookingResp>(h, 'POST', '/api/public/properties/son-kul-aiyl/bookings', { categoryId: 'c-sk-std', ...stay, ...guest, source: 'direct' });
+    const id = r.data.booking.id;
+    const token = { 'x-guest-token': r.data.guestToken };
+    expect((await api(h, 'POST', `/api/public/bookings/${id}/telegram`, { lang: 'en' }, { 'x-guest-token': 'nope' })).status).toBe(404);
+    const link = await api<{ url: string; linked: boolean }>(h, 'POST', `/api/public/bookings/${id}/telegram`, { lang: 'en' }, token);
+    expect(link.data).toMatchObject({ linked: false });
+    expect(link.data.url).toMatch(/^https:\/\/t\.me\/voyz_test_bot\?start=g_[A-Za-z0-9_-]+$/);
+    expect((await api<{ url: string }>(h, 'POST', `/api/public/bookings/${id}/telegram`, { lang: 'en' }, token)).data.url).toBe(link.data.url);
+
+    const hosts = (await h.db.query('select count(*)::int as n from hosts')).rows[0].n;
+    await start(h, `/start ${link.data.url.split('start=')[1]}`);
+    const hello = sent(h, 4242).at(-1)!;
+    expect(hello.body.text).toContain('Done!');
+    expect(hello.body.text).toContain('Deposit');
+    expect(hello.body.reply_markup?.inline_keyboard[0]![0]!.url).toBe(`https://app.test/#/guest/open/${id}?t=${encodeURIComponent(r.data.guestToken)}`);
+    expect((await h.db.query('select count(*)::int as n from hosts')).rows[0].n).toBe(hosts);
+    expect((await api<{ telegram: { linked: boolean } }>(h, 'GET', `/api/public/bookings/${id}`, undefined, token)).data.telegram).toEqual({ available: true, linked: true });
+
+    // The code works once.
+    await start(h, `/start ${link.data.url.split('start=')[1]}`, 5151);
+    expect(sent(h, 5151).at(-1)!.body.text).toContain('expired');
+
+    const auth = bearer(await devToken(h));
+    await api(h, 'POST', `/api/host/bookings/${id}/deposit-received`, { method: 'qr' }, auth);
+    expect(sent(h, 4242).at(-1)!.body.text).toContain('The host confirmed your booking');
+  });
+
+  it('reminds once when less than an hour is left to pay', async () => {
+    h = await harness({}, { realNotifier: true });
+    const r = await api<BookingResp>(h, 'POST', '/api/public/properties/son-kul-aiyl/bookings', { categoryId: 'c-sk-std', ...stay, ...guest, source: 'direct' });
+    const id = r.data.booking.id;
+    const link = await api<{ url: string }>(h, 'POST', `/api/public/bookings/${id}/telegram`, {}, { 'x-guest-token': r.data.guestToken });
+    await start(h, `/start ${link.data.url.split('start=')[1]}`);
+    expect(await remindHolds(h.ctx)).toBe(0);
+    h.clock.now = new Date(Date.parse(r.data.booking.holdUntil!) - 30 * 60_000);
+    expect(await remindHolds(h.ctx)).toBe(1);
+    expect(await remindHolds(h.ctx)).toBe(0);
+    expect(sent(h, 4242).at(-1)!.body.text).toContain('Бронь скоро снимется');
+    h.clock.now = new Date(Date.parse(r.data.booking.holdUntil!) + 60_000);
+    await expireHolds(h.ctx);
+    expect(sent(h, 4242).at(-1)!.body.text).toContain('предоплата не поступила');
   });
 });

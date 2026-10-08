@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { FollowInTelegram } from '../../components/FollowInTelegram';
 import { Screen } from '../../components/Layout';
 import { StatusBadge } from '../../components/StatusBadge';
 import { useToast } from '../../components/Toast';
@@ -17,7 +18,8 @@ export function TripsScreen() {
   return (
     <Screen title={t.trips.title} back="/" tabs={guestTabs(t)}>
       {trips.length === 0 && <p className="muted">{loading ? t.common.loading : t.trips.empty}</p>}
-      {trips.map(({ booking: b, paid, property, categoryName, refundIfCancelled }) => {
+      {trips.map((view) => {
+        const { booking: b, paid, property, categoryName, refundIfCancelled } = view;
         const fmt = (n: number) => formatMoney(n, b.currency, lang);
         const canCancel = b.status === 'pending' || b.status === 'confirmed';
         const owesPrepayment = canCancel && paid < b.prepaymentDue;
@@ -60,6 +62,7 @@ export function TripsScreen() {
                 </button>
               </div>
             )}
+            <FollowInTelegram view={view} onReturn={reload} />
           </div>
         );
       })}

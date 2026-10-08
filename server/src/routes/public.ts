@@ -4,7 +4,7 @@ import type { Ctx } from '../context';
 import { ok } from '../http';
 import { GuestBookingBody } from '../schemas';
 import { catalog } from '../services/catalog';
-import { createGuestBooking, guestCancel, guestReportPaid, guestView } from '../services/bookings';
+import { createGuestBooking, guestCancel, guestReportPaid, guestTelegramLink, guestView } from '../services/bookings';
 
 const guestToken = (req: FastifyRequest) => String(req.headers['x-guest-token'] ?? '');
 
@@ -34,6 +34,12 @@ export function publicRoutes(app: FastifyInstance, ctx: Ctx) {
     const { id } = req.params as { id: string };
     await guestReportPaid(ctx, id, guestToken(req));
     return ok(reply, await guestView(ctx, id, guestToken(req)));
+  });
+
+  app.post('/api/public/bookings/:id/telegram', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const { lang } = z.object({ lang: z.enum(['ru', 'ky', 'en']).default('ru') }).parse(req.body ?? {});
+    return ok(reply, await guestTelegramLink(ctx, id, guestToken(req), lang));
   });
 
   app.post('/api/public/bookings/:id/cancel', async (req, reply) => {

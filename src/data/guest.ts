@@ -22,6 +22,7 @@ function localView(state: AppState, id: string): GuestView | null {
     payment: { qrImage: p.payment.qrImage, recipient: p.payment.recipient, details: p.payment.details },
     categoryName: cat?.name ?? p.name,
     refundIfCancelled: refundOnCancel(p.cancellation, paid, booking.checkIn, todayIn(p.timezone)),
+    telegram: { available: false, linked: false },
   };
 }
 

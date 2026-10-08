@@ -4,13 +4,15 @@ import { buildSeed, DEMO_HOST_ID } from '../../src/data/seed';
 import { randomToken } from './crypto';
 import { tx, type Db } from './db';
 
+const DEMO_HOSTS = [DEMO_HOST_ID, 'host-2'];
+
 export async function seedDemo(db: Db, now = new Date()): Promise<boolean> {
   const exists = await db.query('select 1 from properties limit 1');
   if (exists.rowCount) return false;
   const s = buildSeed(now);
   await tx(db, async (c) => {
-    await c.query(`insert into hosts (id, name, lang) values ($1, 'Демо-хозяин', 'ru'), ('host-2', 'Демо-хозяин 2', 'ru')
-                   on conflict (id) do nothing`, [DEMO_HOST_ID]);
+    await c.query(`insert into hosts (id, name, lang) values ($1, 'Демо-хозяин', 'ru'), ($2, 'Демо-хозяин 2', 'ru')
+                   on conflict (id) do nothing`, DEMO_HOSTS);
     for (const p of s.properties) {
       await c.query(
         `insert into properties (id, slug, owner_id, kind, name, region, description, lat, lng, timezone, currency, check_in_time,
@@ -69,4 +71,19 @@ export async function seedDemo(db: Db, now = new Date()): Promise<boolean> {
     }
   });
   return true;
+}
+
+/**
+ * Real hosts only (ALLOW_DEV_LOGIN=false): the demo properties and everything booked
+ * on them go away, so guests never book a yurt that does not exist. Telegram hosts
+ * have generated ids and are never touched.
+ */
+export async function removeDemo(db: Db): Promise<number> {
+  return tx(db, async (c) => {
+    const props = `select id from properties where owner_id = any($1)`;
+    await c.query(`delete from bookings where property_id in (${props})`, [DEMO_HOSTS]);
+    const r = await c.query('delete from properties where owner_id = any($1)', [DEMO_HOSTS]);
+    await c.query('delete from hosts where id = any($1)', [DEMO_HOSTS]);
+    return r.rowCount ?? 0;
+  });
 }

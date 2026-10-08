@@ -21,6 +21,8 @@ const Env = z.object({
     .string()
     .default('false')
     .transform((v) => v === 'true'),
+  // Sentry project key; empty — no error reports.
+  SENTRY_DSN: z.string().default(''),
   RUN_WORKERS: z
     .string()
     .default('true')

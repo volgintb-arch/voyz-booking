@@ -2,13 +2,15 @@
 
 import { nightsBetween, todayIn } from '../../../src/domain/dates';
 import { formatMoney } from '../../../src/domain/money';
+import { bookingMoney } from '../../../src/domain/ledger';
 import type { Booking, Lang } from '../../../src/domain/types';
 import type { Config } from '../config';
 import type { Ctx } from '../context';
-import { newId } from '../crypto';
+import { decrypt, newId } from '../crypto';
 import { many, one, type Db } from '../db';
+import { toBooking, toPayment, type BookingRow, type PaymentRow } from '../model';
 import { createHash } from 'node:crypto';
-import { botCopy } from './bot-copy';
+import { botCopy, guestCopy, type GuestEvent } from './bot-copy';
 
 export interface Notifier {
   bookingCreated(ownerId: string, booking: Booking): Promise<void>;
@@ -16,6 +18,8 @@ export interface Notifier {
   guestCancelled(ownerId: string, booking: Booking): Promise<void>;
   holdExpired(ownerId: string, booking: Booking): Promise<void>;
   icalConflict(ownerId: string, text: string): Promise<void>;
+  /** The guest's own chat, if they asked to follow the booking in Telegram. */
+  guestUpdate(bookingId: string, event: GuestEvent): Promise<void>;
 }
 
 export const silentNotifier: Notifier = {
@@ -24,6 +28,7 @@ export const silentNotifier: Notifier = {
   guestCancelled: async () => {},
   holdExpired: async () => {},
   icalConflict: async () => {},
+  guestUpdate: async () => {},
 };
 
 type Button = { text: string; callback_data?: string; url?: string };
@@ -177,6 +182,51 @@ export class TelegramNotifier implements Notifier {
     if (!h) return;
     await this.api.send(h.telegram_id!, `⚠️ ${botCopy(h.lang).icalConflict}\n${text}`);
   }
+
+  /** "✅ Хозяин подтвердил бронь\n«Сон-Куль Айыл» · Стандартная юрта\n14 июл. — 17 июл. · 3 ноч. · 2 гост.\nБронь VZ-2027-1001…" */
+  async guestUpdate(bookingId: string, event: GuestEvent) {
+    const row = await one<BookingRow & { p_name: Record<Lang, string>; c_name: Record<Lang, string>; timezone: string; check_in_time: string;
+      check_out_time: string; pay_recipient: string; pay_details: string }>(
+      this.db,
+      `select b.*, p.name as p_name, c.name as c_name, p.timezone, p.check_in_time, p.check_out_time, p.pay_recipient, p.pay_details
+         from bookings b join properties p on p.id = b.property_id join categories c on c.id = b.category_id where b.id = $1`,
+      [bookingId],
+    );
+    if (!row?.guest_chat_id) return;
+    const booking = toBooking(row);
+    const lang = row.guest_lang;
+    const c = guestCopy(lang);
+    const h = botCopy(lang);
+    const payments = await many<PaymentRow>(this.db, 'select * from payments where booking_id = $1', [bookingId]);
+    const due = Math.max(0, booking.prepaymentDue - bookingMoney(booking, payments.map(toPayment)).paid);
+    const lines = [
+      c.event[event],
+      `«${row.p_name[lang]}» · ${row.c_name[lang]}`,
+      `${dateLabel(booking.checkIn, lang)} — ${dateLabel(booking.checkOut, lang)} · ${h.nights(nightsBetween(booking.checkIn, booking.checkOut))} · ${h.guests(booking.guests)}`,
+      c.booking(booking.id),
+    ];
+    if (event === 'linked') lines.push(c.status[booking.status]);
+    if (booking.status === 'confirmed' || booking.status === 'checked_in') lines.push(c.times(row.check_in_time, row.check_out_time));
+    if (booking.status === 'pending' && due > 0) {
+      const until = booking.holdUntil ? instantLabel(booking.holdUntil, row.timezone, lang) : '';
+      lines.push('', c.due(formatMoney(due, booking.currency, lang), until));
+      if (row.pay_recipient || row.pay_details) lines.push(c.payTo(row.pay_recipient, row.pay_details));
+      lines.push(c.comment(booking.id));
+    }
+    await this.api.send(Number(row.guest_chat_id), lines.join('\n'), this.guestButton(row, lang));
+  }
+
+  /** Opens the booking on any phone: the link carries the guest's own token. */
+  private guestButton(row: BookingRow, lang: Lang): Button[][] {
+    if (!row.guest_token_enc) return [];
+    try {
+      const token = decrypt(row.guest_token_enc, this.config.SERVER_SECRET, 'guest-token');
+      const url = `${this.config.APP_URL}#/guest/open/${encodeURIComponent(row.id)}?t=${encodeURIComponent(token)}`;
+      return [[{ text: guestCopy(lang).open, url }]];
+    } catch {
+      return []; // SERVER_SECRET changed: the message still goes out, without the button
+    }
+  }
 }
 
 // ---------- Incoming updates (webhook) ----------
@@ -220,9 +270,20 @@ export interface BotActions {
 export async function handleUpdate(ctx: Ctx, api: TelegramApi, update: TgUpdate, actions: BotActions): Promise<void> {
   const msg = update.message;
   if (msg?.text?.startsWith('/start') && msg.from) {
+    const payload = msg.text.split(' ')[1] ?? '';
+    // A guest following a booking — not a host, no host account is created.
+    if (payload.startsWith('g_')) {
+      const row = await one<{ id: string }>(
+        ctx.db,
+        'update bookings set guest_chat_id = $2, guest_link_code = null where guest_link_code = $1 returning id',
+        [payload.slice('g_'.length), msg.chat.id],
+      );
+      if (row) await ctx.notify.guestUpdate(row.id, 'linked');
+      else await api.send(msg.chat.id, guestCopy(langOf(msg.from.language_code)).linkExpired);
+      return;
+    }
     const host = await upsertTelegramHost(ctx.db, msg.from);
     const c = botCopy(host.lang);
-    const payload = msg.text.split(' ')[1] ?? '';
     if (payload.startsWith('login_')) {
       const r = await ctx.db.query(
         `update login_codes set host_id = $2, confirmed_at = now()

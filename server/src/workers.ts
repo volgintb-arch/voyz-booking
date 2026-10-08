@@ -1,5 +1,6 @@
 import type { Ctx } from './context';
-import { expireHolds } from './services/bookings';
+import { reportError } from './monitoring';
+import { expireHolds, remindHolds } from './services/bookings';
 import { syncDue } from './services/ical';
 import { flushOutbox } from './services/outbox';
 import { ensureWebhook, morningSummary, type TelegramApi } from './services/telegram';
@@ -11,6 +12,7 @@ export function startWorkers(ctx: Ctx, api: TelegramApi, log: Log): () => void {
   const jobs: [string, number, () => Promise<unknown>][] = [
     ['outbox', 30_000, () => flushOutbox(ctx)],
     ['holds', 60_000, () => expireHolds(ctx)],
+    ['reminders', 5 * 60_000, () => remindHolds(ctx)],
     ['ical', 5 * 60_000, () => syncDue(ctx, 20)],
     ['summary', 10 * 60_000, () => morningSummary(ctx, api)],
     ['webhook', 10 * 60_000, () => ensureWebhook(ctx, api)],
@@ -24,6 +26,7 @@ export function startWorkers(ctx: Ctx, api: TelegramApi, log: Log): () => void {
         await run();
       } catch (e) {
         log.error(e, `worker ${name} failed`);
+        reportError(e, { worker: name });
       } finally {
         busy = false;
       }

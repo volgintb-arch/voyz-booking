@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { initMonitoring } from './monitoring';
 import { initPlatform } from './platform';
 import { rememberVisit } from './share/links';
 import '@fontsource/nunito/400.css';
@@ -12,6 +13,7 @@ import '@fontsource/montserrat/800.css';
 import './styles/global.css';
 
 const platform = initPlatform();
+void initMonitoring(platform);
 // Link source and widget mode come in the URL of the very first screen.
 rememberVisit(new URLSearchParams(window.location.hash.split('?')[1] ?? ''));
 

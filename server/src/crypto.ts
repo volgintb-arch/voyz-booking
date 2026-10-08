@@ -8,22 +8,24 @@ export function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function key(secret: string): Buffer {
-  return createHash('sha256').update(`aynes-key:${secret}`).digest();
+export type SealPurpose = 'aynes-key' | 'guest-token';
+
+function key(secret: string, purpose: SealPurpose): Buffer {
+  return createHash('sha256').update(`${purpose}:${secret}`).digest();
 }
 
-/** AES-256-GCM: the owner's Aynes key is stored encrypted (TZ §7). */
-export function encrypt(plain: string, secret: string): string {
+/** AES-256-GCM: the owner's Aynes key is stored encrypted (TZ §7), and so is the guest's link token. */
+export function encrypt(plain: string, secret: string, purpose: SealPurpose = 'aynes-key'): string {
   const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', key(secret), iv);
+  const cipher = createCipheriv('aes-256-gcm', key(secret, purpose), iv);
   const data = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
   return [iv, cipher.getAuthTag(), data].map((b) => b.toString('base64url')).join('.');
 }
 
-export function decrypt(sealed: string, secret: string): string {
+export function decrypt(sealed: string, secret: string, purpose: SealPurpose = 'aynes-key'): string {
   const [iv, tag, data] = sealed.split('.').map((p) => Buffer.from(p, 'base64url'));
   if (!iv || !tag || !data) throw new Error('Malformed sealed value');
-  const decipher = createDecipheriv('aes-256-gcm', key(secret), iv);
+  const decipher = createDecipheriv('aes-256-gcm', key(secret, purpose), iv);
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
 }

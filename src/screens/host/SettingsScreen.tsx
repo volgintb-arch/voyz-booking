@@ -452,16 +452,21 @@ function Aynes({ property }: { property: Property }) {
     <>
       <p className="small">{t.settings.aynesIntro}</p>
       {aynes.connected ? (
-        <div className="row between">
-          <span className="strong small">{t.settings.connected(aynes.keyHint ?? '')}</span>
-          <button
-            type="button"
-            className="btn small danger"
-            onClick={() => void actions.disconnectAynes(property.id)}
-          >
-            {t.settings.disconnect}
-          </button>
-        </div>
+        <>
+          <div className="row between">
+            <span className="strong small">{t.settings.connected(aynes.keyHint ?? '')}</span>
+            <button
+              type="button"
+              className="btn small danger"
+              onClick={() => void actions.disconnectAynes(property.id)}
+            >
+              {t.settings.disconnect}
+            </button>
+          </div>
+          <p className="muted small">
+            {t.settings.aynesMapping} <b>{property.slug}</b>
+          </p>
+        </>
       ) : (
         <form className="stack" onSubmit={connect}>
           <Field label={t.settings.key} hint={t.settings.keyHint}>

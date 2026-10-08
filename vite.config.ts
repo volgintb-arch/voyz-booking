@@ -10,6 +10,8 @@ const PUBLIC_URL = process.env.VITE_PUBLIC_URL ?? 'https://volgintb-arch.github.
 // inside the iOS/Android shell (Capacitor) and in a Telegram Mini App.
 export default defineConfig({
   base: './',
+  // Readable stack traces in Sentry (the code is public anyway).
+  build: { sourcemap: true },
   plugins: [
     react(),
     sharePages(PUBLIC_URL),

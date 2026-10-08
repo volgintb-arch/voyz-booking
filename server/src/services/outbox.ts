@@ -42,6 +42,17 @@ export async function enqueuePayment(q: Queryable, propertyId: string, payment: 
   await put(q, propertyId, paymentPath(payment.bookingId, payment.id), toAynesPayment(payment));
 }
 
+/** Aynes answers 409 when it already holds this or a newer version: nothing left to send. */
+function isSuperseded(text: string, body: unknown): boolean {
+  try {
+    const current = (JSON.parse(text) as { error?: { details?: { currentVersion?: unknown } } }).error?.details?.currentVersion;
+    const ours = (body as { version?: unknown }).version;
+    return typeof current === 'number' && typeof ours === 'number' && current >= ours;
+  } catch {
+    return false;
+  }
+}
+
 /** Retry delays: 1 min, 5 min, 30 min, 2 h, then every 6 h (Aynes may be down, hosts offline). */
 const BACKOFF_MIN = [1, 5, 30, 120, 360];
 
@@ -70,6 +81,7 @@ export async function flushOutbox(ctx: Ctx, propertyId?: string, limit = 25): Pr
       }
       let status = 0;
       let error = '';
+      let superseded = false;
       try {
         const res = await ctx.fetch(new URL(row.path, ctx.config.AYNES_API_URL), {
           method: 'PUT',
@@ -78,11 +90,15 @@ export async function flushOutbox(ctx: Ctx, propertyId?: string, limit = 25): Pr
           signal: AbortSignal.timeout(15_000),
         });
         status = res.status;
-        if (!res.ok) error = `${res.status} ${(await res.text()).slice(0, 300)}`;
+        if (!res.ok) {
+          const text = await res.text();
+          error = `${res.status} ${text.slice(0, 300)}`;
+          superseded = status === 409 && isSuperseded(text, row.body);
+        }
       } catch (e) {
         error = e instanceof Error ? e.message : String(e);
       }
-      if (status >= 200 && status < 300) {
+      if ((status >= 200 && status < 300) || superseded) {
         await c.query(`update outbox set status = 'sent', attempts = attempts + 1, sent_at = now(), last_error = null where id = $1`, [row.id]);
         outcome.sent++;
       } else if (status === 0 || status === 429 || status >= 500) {

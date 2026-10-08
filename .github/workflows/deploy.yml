@@ -32,6 +32,9 @@ jobs:
       - run: npx vite build
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
+          # Error reports (docs/MONITORING.md); empty — off.
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+          VITE_RELEASE: ${{ github.sha }}
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:

@@ -2,11 +2,11 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Field, Screen } from '../../components/Layout';
 import { conflictsFor } from '../../domain/availability';
-import { addDays, isIsoDate, nightsBetween, nowWithOffset, todayIn } from '../../domain/dates';
-import { formatMoney, parseMajor, percentOf } from '../../domain/money';
+import { addDays, isIsoDate, nightsBetween, todayIn } from '../../domain/dates';
+import { formatMoney, parseMajor } from '../../domain/money';
 import { quoteStay } from '../../domain/pricing';
 import type { Channel } from '../../domain/types';
-import { createBooking } from '../../data/state';
+import { useActions } from '../../data/actions';
 import { useStore } from '../../data/store';
 import { useT } from '../../i18n';
 import { PropertySwitch } from './PropertySwitch';
@@ -16,7 +16,9 @@ import { useHostProperty } from './useHostProperty';
 const CHANNELS: Channel[] = ['whatsapp', 'telegram', 'instagram', 'phone', 'walk_in', 'booking_com', 'airbnb'];
 
 export function NewBookingScreen() {
-  const { state, update } = useStore();
+  const { state } = useStore();
+  const actions = useActions();
+  const [busy, setBusy] = useState(false);
   const { t, lang } = useT();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -54,38 +56,29 @@ export function NewBookingScreen() {
   const fmt = (n: number) => formatMoney(n, property.currency, lang);
   const totalMinor = total === null ? (quote?.total ?? 0) : parseMajor(total);
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!unit || !category) return;
     if (!validDates) return setError(t.property.badDates);
     if (!name.trim()) return setError(t.book.nameRequired);
     if (totalMinor === null) return setError(t.detail.badAmount);
-    const result = createBooking(
-      state,
-      {
-        propertyId: property.id,
-        unitId: unit.id,
-        categoryId: category.id,
-        checkIn,
-        checkOut,
-        guests,
-        guestName: name.trim(),
-        guestPhone: phone.trim(),
-        channel,
-        status: confirmNow ? 'confirmed' : 'pending',
-        currency: property.currency,
-        total: totalMinor,
-        prepaymentDue: percentOf(totalMinor, property.cancellation.prepaymentPercent),
-        nonRefundablePrepayment: property.cancellation.nonRefundable,
-        note: note.trim(),
-        createdBy: 'host',
-        source: null,
-      },
-      nowWithOffset(property.timezone),
-    );
-    if (!result.ok) return setError(t.create.conflict);
-    update(() => result.state);
-    navigate(`/host/b/${result.booking.id}`, { replace: true });
+    setBusy(true);
+    const r = await actions.hostBook({
+      propertyId: property.id,
+      unitId: unit.id,
+      checkIn,
+      checkOut,
+      guests,
+      guestName: name.trim(),
+      guestPhone: phone.trim(),
+      channel,
+      total: totalMinor,
+      confirm: confirmNow,
+      note: note.trim(),
+    });
+    setBusy(false);
+    if (!r.ok) return setError(r.code === 'dates_taken' ? t.create.conflict : r.code === 'offline' ? t.common.offline : t.common.serverDown);
+    navigate(`/host/b/${r.value.id}`, { replace: true });
   };
 
   return (
@@ -177,7 +170,7 @@ export function NewBookingScreen() {
           <span>{t.create.confirmNow}</span>
         </label>
         {error && <p className="error">{error}</p>}
-        <button type="submit" className="btn block" disabled={conflicts.length > 0 || !validDates}>
+        <button type="submit" className="btn block" disabled={conflicts.length > 0 || !validDates || busy}>
           {t.create.submit}
         </button>
         <p className="muted small">{t.create.hint}</p>

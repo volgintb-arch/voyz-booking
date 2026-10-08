@@ -6,7 +6,7 @@ import { Screen, SectionHead } from '../../components/Layout';
 import { QrCode } from '../../components/QrCode';
 import { Stepper } from '../../components/Stepper';
 import { useToast } from '../../components/Toast';
-import { PUBLIC_URL } from '../../config';
+import { PUBLIC_URL, SHARE_URL } from '../../config';
 import { addDays, todayIn } from '../../domain/dates';
 import { formatMoney } from '../../domain/money';
 import type { LinkSource } from '../../domain/types';
@@ -39,7 +39,7 @@ export function PromoScreen() {
     );
   }
 
-  const url = shareUrl(PUBLIC_URL, property.slug, { src, ...(withDates ? { ...dates, guests } : {}) });
+  const url = shareUrl(SHARE_URL, property.slug, { src, ...(withDates ? { ...dates, guests } : {}) });
   const name = property.name[lang];
   const text = `${t.promo.shareText(name)} ${url}`;
   const copy = async (value: string) => toast.show((await copyText(value)) ? t.promo.copied : t.promo.copyFailed);
@@ -97,7 +97,7 @@ export function PromoScreen() {
       <div className="previewCard" aria-label={t.promo.previewLabel}>
         <img src="./og.png" alt="" />
         <div>
-          <span className="tiny muted">{new URL(PUBLIC_URL).host}</span>
+          <span className="tiny muted">{new URL(SHARE_URL).host}</span>
           <b>{name}</b>
           <span className="small">
             {property.region[lang]} · {t.search.fromPrice(formatMoney(minPrice, property.currency, lang))}
@@ -131,7 +131,7 @@ export function PromoScreen() {
 
       <SectionHead>{t.promo.posterTitle}</SectionHead>
       <div className="card accent" style={{ alignItems: 'center', textAlign: 'center' }}>
-        <QrCode value={shareUrl(PUBLIC_URL, property.slug, { src: 'qr' })} size={180} label={t.promo.posterTitle} />
+        <QrCode value={shareUrl(SHARE_URL, property.slug, { src: 'qr' })} size={180} label={t.promo.posterTitle} />
         <p className="small">{t.promo.posterHint}</p>
         <Link className="btn lime block" to={`/host/poster?p=${property.slug}`}>
           <Icon name="printer" /> {t.promo.openPoster}

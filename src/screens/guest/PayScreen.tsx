@@ -1,12 +1,11 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { Screen } from '../../components/Layout';
 import { useToast } from '../../components/Toast';
-import { nowWithOffset } from '../../domain/dates';
-import { bookingMoney } from '../../domain/ledger';
 import { formatMoney } from '../../domain/money';
-import { reportPaid } from '../../data/state';
-import { useStore } from '../../data/store';
+import { useActions } from '../../data/actions';
+import { useGuestView } from '../../data/guest';
 import { useT } from '../../i18n';
 import { copyText } from '../../share/clipboard';
 
@@ -14,24 +13,28 @@ import { copyText } from '../../share/clipboard';
 export function PayScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { state, update } = useStore();
+  const actions = useActions();
   const { t, lang, fmtInstant } = useT();
   const toast = useToast();
-  const booking = state.bookings.find((b) => b.id === id);
-  const property = state.properties.find((p) => p.id === booking?.propertyId);
-  if (!booking || !property) {
+  const { view, loading } = useGuestView(id);
+  const [busy, setBusy] = useState(false);
+
+  if (!view) {
     return (
       <Screen title={t.pay.title} back="/guest/trips">
-        <p className="muted">{t.detail.notFound}</p>
+        <p className="muted">{loading ? t.common.loading : t.detail.notFound}</p>
       </Screen>
     );
   }
-  const due = Math.max(0, booking.prepaymentDue - bookingMoney(booking, state.payments).paid);
-  const { payment } = property;
+  const { booking, payment, property } = view;
+  const due = Math.max(0, booking.prepaymentDue - view.paid);
   const copy = async (v: string) => toast.show((await copyText(v)) ? t.promo.copied : t.promo.copyFailed);
 
-  const paid = () => {
-    update((s) => reportPaid(s, booking.id, nowWithOffset(property.timezone)));
+  const paid = async () => {
+    setBusy(true);
+    const r = await actions.reportPaid(booking.id);
+    setBusy(false);
+    if (!r.ok) return toast.show(r.code === 'offline' ? t.common.offline : t.common.serverDown);
     navigate(`/guest/done/${booking.id}`, { replace: true });
   };
 
@@ -61,11 +64,9 @@ export function PayScreen() {
       </div>
 
       <div className="panel">
-        <div className="row between">
-          <div className="stack" style={{ gap: 2 }}>
-            <span className="muted small">{t.payment.recipient}</span>
-            <b>{payment.recipient || '—'}</b>
-          </div>
+        <div className="stack" style={{ gap: 2 }}>
+          <span className="muted small">{t.payment.recipient}</span>
+          <b>{payment.recipient || '—'}</b>
         </div>
         {payment.details && (
           <div className="row between">
@@ -96,7 +97,7 @@ export function PayScreen() {
         <p className="banner info">{t.pay.reported}</p>
       ) : (
         <div className="actions">
-          <button type="button" className="btn" onClick={paid}>
+          <button type="button" className="btn" onClick={paid} disabled={busy}>
             {t.pay.paid}
           </button>
           <button type="button" className="btn lime" onClick={() => navigate('/guest/trips', { replace: true })}>

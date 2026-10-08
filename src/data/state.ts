@@ -14,6 +14,7 @@ import type {
   Season,
 } from '../domain/types';
 import { bookingPath, enqueue, paymentPath, toAynesBooking, toAynesPayment } from '../integrations/aynes';
+import type { Catalog, HostSnapshot } from '../api/types';
 import { buildSeed, DEMO_HOST_ID, type SeedData } from './seed';
 
 export interface AynesSettings {
@@ -30,6 +31,12 @@ export interface AppState extends SeedData {
   outbox: OutboxItem[];
   aynes: AynesSettings;
   seq: number;
+  // Server mode only (VITE_API_URL): per-property Aynes state, iCal feed links, signed-in host.
+  aynesByProperty?: Record<string, AynesSettings>;
+  icalUrls?: Record<string, string>;
+  host?: { id: string; name: string } | null;
+  /** Server mode: whose data the state holds right now. */
+  view?: 'guest' | 'host';
 }
 
 export function initialState(now: Date = new Date()): AppState {
@@ -235,4 +242,96 @@ export function expireHolds(state: AppState, now: Date, nowIso: string): AppStat
     return paid < b.prepaymentDue;
   });
   return expired.reduce((s, b) => updateBooking(s, b.id, { status: 'cancelled', cancelReason: 'hold_expired' }, nowIso), state);
+}
+
+/** Server workspace replaces the host part of the state. */
+export function applySnapshot(state: AppState, snap: HostSnapshot): AppState {
+  return {
+    ...state,
+    view: 'host',
+    hostId: snap.host.id,
+    host: { id: snap.host.id, name: snap.host.name },
+    properties: snap.properties.map(({ aynes: _a, ...p }) => p),
+    aynesByProperty: Object.fromEntries(snap.properties.map((p) => [p.id, p.aynes])),
+    categories: snap.categories,
+    units: snap.units.map(({ icalExportUrl: _u, ...u }) => u),
+    icalUrls: Object.fromEntries(snap.units.map((u) => [u.id, u.icalExportUrl])),
+    seasons: snap.seasons,
+    bookings: snap.bookings,
+    payments: snap.payments,
+    blocks: snap.blocks,
+    icalChannels: snap.icalChannels,
+    outbox: snap.outbox,
+  };
+}
+
+/** Public catalog for guests: other people's bookings arrive only as busy nights. */
+export function applyCatalog(state: AppState, cat: Catalog): AppState {
+  return {
+    ...state,
+    view: 'guest',
+    properties: cat.properties.map((p) => ({
+      ...p,
+      ownerId: '',
+      payment: { qrImage: null, recipient: '', details: '', holdHours: p.payment.holdHours },
+    })),
+    categories: cat.categories,
+    units: cat.units,
+    seasons: cat.seasons,
+    bookings: [],
+    payments: [],
+    blocks: cat.occupancy.map((o, i) => ({ id: `occ-${i}`, unitId: o.unitId, from: o.from, to: o.to, reason: 'closed' as const, label: '' })),
+    icalChannels: [],
+  };
+}
+
+export interface NewPropertyInput {
+  kind: Property['kind'];
+  name: string;
+  region: string;
+  description: string;
+  checkInTime: string;
+  checkOutTime: string;
+  categories: { name: string; capacity: number; baseOccupancy: number; basePrice: number; extraGuestPrice: number; units: string[] }[];
+}
+
+/** Demo mode onboarding — same shape the server creates. */
+export function createProperty(state: AppState, input: NewPropertyInput): { state: AppState; propertyId: string } {
+  let seq = state.seq;
+  const id = `p-${++seq}`;
+  const loc = (v: string) => ({ ru: v, ky: v, en: v });
+  const base = input.name.toLowerCase().replace(/[^a-z0-9а-яёүөң]+/gi, '-').replace(/^-|-$/g, '') || 'object';
+  let slug = base;
+  for (let i = 2; state.properties.some((p) => p.slug === slug); i++) slug = `${base}-${i}`;
+  const property: Property = {
+    id,
+    slug,
+    ownerId: state.hostId,
+    kind: input.kind,
+    name: loc(input.name),
+    region: loc(input.region),
+    description: loc(input.description),
+    lat: 0,
+    lng: 0,
+    timezone: 'Asia/Bishkek',
+    currency: 'KGS',
+    checkInTime: input.checkInTime,
+    checkOutTime: input.checkOutTime,
+    cancellation: { prepaymentPercent: 0, freeCancelDays: 0, nonRefundable: false },
+    paymentMethods: ['cash'],
+    amenities: [],
+    hue: (seq * 47) % 360,
+    payment: { qrImage: null, recipient: '', details: '', holdHours: 24 },
+  };
+  const categories: Category[] = [];
+  const units: AppState['units'] = [];
+  for (const c of input.categories) {
+    const catId = `c-${++seq}`;
+    categories.push({ id: catId, propertyId: id, name: loc(c.name), capacity: c.capacity, baseOccupancy: Math.min(c.baseOccupancy, c.capacity), basePrice: c.basePrice, extraGuestPrice: c.extraGuestPrice, minNights: 1 });
+    for (const name of c.units) units.push({ id: `u-${++seq}`, propertyId: id, categoryId: catId, name });
+  }
+  return {
+    propertyId: id,
+    state: { ...state, seq, properties: [...state.properties, property], categories: [...state.categories, ...categories], units: [...state.units, ...units] },
+  };
 }

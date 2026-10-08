@@ -1,9 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { apiMode } from '../api/client';
 import { sendToAynes } from '../integrations/aynes';
 import { nowWithOffset } from '../domain/dates';
 import { expireHolds, initialState, markOutbox, type AppState } from './state';
 
-const STORAGE_KEY = 'voyz-booking:v2';
+// Server mode keeps its own cache, so demo data never mixes with real bookings.
+const STORAGE_KEY = apiMode ? 'voyz-booking:api:v1' : 'voyz-booking:v2';
 
 function load(): AppState {
   try {
@@ -15,7 +17,25 @@ function load(): AppState {
   } catch {
     // storage unavailable (private mode) — start from the demo seed
   }
-  return initialState();
+  return apiMode ? emptyState() : initialState();
+}
+
+/** Server mode starts empty and fills from the API (catalog or host workspace). */
+function emptyState(): AppState {
+  return {
+    ...initialState(),
+    properties: [],
+    categories: [],
+    units: [],
+    seasons: [],
+    bookings: [],
+    payments: [],
+    blocks: [],
+    icalChannels: [],
+    outbox: [],
+    hostId: '',
+    host: null,
+  };
 }
 
 function save(state: AppState): void {
@@ -30,6 +50,8 @@ interface Store {
   state: AppState;
   /** Applies a pure transition from data/state.ts. */
   update: (fn: (s: AppState) => AppState) => void;
+  /** Replaces state with what the server answered. */
+  replace: (fn: (s: AppState) => AppState) => void;
   online: boolean;
   syncing: boolean;
   flush: () => Promise<void>;
@@ -69,7 +91,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const flush = useCallback(async () => {
     const { aynes, outbox } = stateRef.current;
-    if (!aynes.connected || !navigator.onLine) return;
+    // In server mode the server talks to Aynes.
+    if (apiMode || !aynes.connected || !navigator.onLine) return;
     const waiting = outbox.filter((o) => o.status !== 'sent');
     if (waiting.length === 0) return;
     setSyncing(true);
@@ -90,8 +113,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (online) void flush();
   }, [online, flush]);
 
-  // The server will release unpaid bookings; until then the device does it (D-001).
+  // Demo mode: the device releases unpaid bookings; in server mode the server does it (D-001).
   useEffect(() => {
+    if (apiMode) return;
     const tick = () => setState((s) => {
       const next = expireHolds(s, new Date(), nowWithOffset('Asia/Bishkek'));
       return next === s ? s : next;
@@ -101,9 +125,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(id);
   }, []);
 
-  const reset = useCallback(() => setState({ ...initialState(), lang: stateRef.current.lang }), []);
+  const reset = useCallback(() => setState({ ...(apiMode ? emptyState() : initialState()), lang: stateRef.current.lang }), []);
 
-  const value = useMemo(() => ({ state, update, online, syncing, flush, reset }), [state, update, online, syncing, flush, reset]);
+  const value = useMemo(
+    () => ({ state, update, replace: update, online, syncing, flush, reset }),
+    [state, update, online, syncing, flush, reset],
+  );
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 

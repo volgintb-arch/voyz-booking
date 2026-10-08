@@ -40,7 +40,13 @@ export function BoardScreen() {
   if (!property) {
     return (
       <Screen title={t.host.tabBoard} back="/" tabs={hostTabs(t)}>
-        <p className="muted">{t.host.noProperties}</p>
+        <div className="card accent center" style={{ alignItems: 'center' }}>
+          <p className="strong">{t.host.noProperties}</p>
+          <p className="muted small">{t.onboarding.intro}</p>
+          <Link className="btn lime block" to="/host/new-property">
+            <Icon name="plus" /> {t.onboarding.addProperty}
+          </Link>
+        </div>
       </Screen>
     );
   }

@@ -2,8 +2,7 @@ import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { Field } from '../../components/Layout';
 import { Icon } from '../../components/Icon';
 import type { Property } from '../../domain/types';
-import { updateProperty } from '../../data/state';
-import { useStore } from '../../data/store';
+import { useActions, type Result } from '../../data/actions';
 import { useT } from '../../i18n';
 
 const HOLD_CHOICES = [2, 6, 12, 24, 48];
@@ -32,8 +31,8 @@ function readImage(file: File): Promise<string> {
 }
 
 /** Host's own QR and requisites for deposits (D-001, stage 1). */
-export function PaymentSettings({ property, onSaved }: { property: Property; onSaved: () => void }) {
-  const { update } = useStore();
+export function PaymentSettings({ property, onSaved }: { property: Property; onSaved: (r: Result) => void }) {
+  const actions = useActions();
   const { t } = useT();
   const [qrImage, setQrImage] = useState(property.payment.qrImage);
   const [recipient, setRecipient] = useState(property.payment.recipient);
@@ -52,10 +51,9 @@ export function PaymentSettings({ property, onSaved }: { property: Property; onS
     }
   };
 
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault();
-    update((s) => updateProperty(s, property.id, { payment: { qrImage, recipient: recipient.trim(), details: details.trim(), holdHours } }));
-    onSaved();
+    onSaved(await actions.updateProperty(property.id, { payment: { qrImage, recipient: recipient.trim(), details: details.trim(), holdHours } }));
   };
 
   return (

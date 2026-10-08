@@ -1,41 +1,33 @@
 import { Link } from 'react-router-dom';
 import { Screen } from '../../components/Layout';
 import { StatusBadge } from '../../components/StatusBadge';
-import { nowWithOffset, todayIn } from '../../domain/dates';
-import { bookingMoney } from '../../domain/ledger';
+import { useToast } from '../../components/Toast';
 import { formatMoney } from '../../domain/money';
-import { refundOnCancel } from '../../domain/pricing';
-import { updateBooking } from '../../data/state';
-import { useStore } from '../../data/store';
+import { useActions } from '../../data/actions';
+import { useGuestTrips } from '../../data/guest';
 import { useT } from '../../i18n';
 import { guestTabs } from './tabs';
 
 export function TripsScreen() {
-  const { state, update } = useStore();
+  const actions = useActions();
   const { t, lang, fmtRange, fmtInstant } = useT();
-  const trips = state.bookings
-    .filter((b) => state.guestBookingIds.includes(b.id))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const toast = useToast();
+  const { trips, loading, reload } = useGuestTrips();
 
   return (
     <Screen title={t.trips.title} back="/" tabs={guestTabs(t)}>
-      {trips.length === 0 && <p className="muted">{t.trips.empty}</p>}
-      {trips.map((b) => {
-        const property = state.properties.find((p) => p.id === b.propertyId);
-        const category = state.categories.find((c) => c.id === b.categoryId);
-        if (!property || !category) return null;
-        const money = bookingMoney(b, state.payments);
+      {trips.length === 0 && <p className="muted">{loading ? t.common.loading : t.trips.empty}</p>}
+      {trips.map(({ booking: b, paid, property, categoryName, refundIfCancelled }) => {
         const fmt = (n: number) => formatMoney(n, b.currency, lang);
         const canCancel = b.status === 'pending' || b.status === 'confirmed';
-        const cancel = () => {
-          const refund = refundOnCancel(property.cancellation, money.paid, b.checkIn, todayIn(property.timezone));
-          const question =
-            money.paid === 0 ? t.detail.confirmCancel : refund > 0 ? t.trips.cancelRefund(fmt(refund)) : t.trips.cancelNoRefund;
-          if (window.confirm(question)) {
-            update((s) => updateBooking(s, b.id, { status: 'cancelled', cancelReason: 'guest' }, nowWithOffset(property.timezone)));
-          }
+        const owesPrepayment = canCancel && paid < b.prepaymentDue;
+        const cancel = async () => {
+          const question = paid === 0 ? t.detail.confirmCancel : refundIfCancelled > 0 ? t.trips.cancelRefund(fmt(refundIfCancelled)) : t.trips.cancelNoRefund;
+          if (!window.confirm(question)) return;
+          const r = await actions.guestCancel(b.id);
+          if (!r.ok) return toast.show(r.code === 'offline' ? t.common.offline : t.common.serverDown);
+          reload();
         };
-        const owesPrepayment = canCancel && money.paid < b.prepaymentDue;
         return (
           <div key={b.id} className="card accent">
             <div className="row between">
@@ -44,13 +36,13 @@ export function TripsScreen() {
             </div>
             <h3 className="title-caps">{property.name[lang]}</h3>
             <span className="muted">
-              {category.name[lang]} · {t.common.guests(b.guests)}
+              {categoryName[lang]} · {t.common.guests(b.guests)}
             </span>
             <div className="row between">
               <span>{fmtRange(b.checkIn, b.checkOut)}</span>
               <span className="pricePill">{fmt(b.total)}</span>
             </div>
-            <span className="small">{t.trips.paid(fmt(money.paid))}</span>
+            <span className="small">{t.trips.paid(fmt(paid))}</span>
             {b.status === 'pending' && b.guestReportedPaidAt && <p className="banner info">{t.pay.reported}</p>}
             {b.status === 'pending' && !b.guestReportedPaidAt && b.holdUntil && owesPrepayment && (
               <p className="small strong">{t.pay.deadline(fmtInstant(b.holdUntil))}</p>
@@ -71,6 +63,7 @@ export function TripsScreen() {
           </div>
         );
       })}
+      {toast.node}
     </Screen>
   );
 }

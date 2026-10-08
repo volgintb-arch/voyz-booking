@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { Screen } from '../../components/Layout';
 import { QrCode, qrSvg } from '../../components/QrCode';
-import { PUBLIC_URL } from '../../config';
+import { SHARE_URL } from '../../config';
 import { DICTS, useT } from '../../i18n';
 import { shareUrl } from '../../share/links';
 import { useHostProperty } from './useHostProperty';
@@ -12,7 +12,7 @@ export function PosterScreen() {
   const { t } = useT();
   const { property } = useHostProperty();
   const [svgHref, setSvgHref] = useState<string | null>(null);
-  const url = property ? shareUrl(PUBLIC_URL, property.slug, { src: 'qr' }) : '';
+  const url = property ? shareUrl(SHARE_URL, property.slug, { src: 'qr' }) : '';
 
   useEffect(() => {
     if (!url) return;

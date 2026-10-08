@@ -6,16 +6,8 @@ import { useToast } from '../../components/Toast';
 import { addDays, nightsBetween, todayIn } from '../../domain/dates';
 import { formatMoney, parseMajor } from '../../domain/money';
 import type { Category, IcalChannel, PaymentMethod, Property } from '../../domain/types';
-import {
-  addBlock,
-  addIcalChannel,
-  addSeason,
-  removeBlock,
-  removeIcalChannel,
-  removeSeason,
-  updateCategory,
-  updateProperty,
-} from '../../data/state';
+import { apiMode, call, hostToken } from '../../api/client';
+import { aynesOf, useActions, type Result } from '../../data/actions';
 import { useStore } from '../../data/store';
 import { useT } from '../../i18n';
 import { PaymentSettings } from './PaymentSettings';
@@ -37,6 +29,7 @@ export function SettingsScreen() {
   const { t } = useT();
   const { properties, property, select } = useHostProperty();
   const toast = useToast();
+  const saved = (r: Result) => toast.show(r.ok ? t.common.saved : r.code === 'offline' ? t.common.offline : t.common.serverDown);
   return (
     <Screen title={t.host.tabSettings} back="/" tabs={hostTabs(t)}>
       {property ? (
@@ -53,13 +46,13 @@ export function SettingsScreen() {
             </span>
           </Link>
           <Section icon="sliders" title={t.settings.prices}>
-            <Prices key={property.id} property={property} onSaved={() => toast.show(t.common.saved)} />
+            <Prices key={property.id} property={property} onSaved={saved} />
           </Section>
           <Section icon="wallet" title={t.payment.title}>
-            <PaymentSettings key={property.id} property={property} onSaved={() => toast.show(t.common.saved)} />
+            <PaymentSettings key={property.id} property={property} onSaved={saved} />
           </Section>
           <Section icon="shield" title={t.settings.rules}>
-            <Rules key={property.id} property={property} onSaved={() => toast.show(t.common.saved)} />
+            <Rules key={property.id} property={property} onSaved={saved} />
           </Section>
           <Section icon="calendar" title={t.settings.closed}>
             <ClosedDates key={property.id} property={property} />
@@ -67,46 +60,40 @@ export function SettingsScreen() {
           <Section icon="grid" title={t.settings.ical}>
             <Ical key={property.id} property={property} />
           </Section>
+          <Section icon="sparkle" title={t.settings.aynes}>
+            <Aynes key={property.id} property={property} />
+          </Section>
           </div>
         </>
       ) : (
         <p className="muted">{t.host.noProperties}</p>
       )}
-      <Section icon="sparkle" title={t.settings.aynes} open>
-        <Aynes />
-      </Section>
-      <Section icon="user" title={t.settings.demo}>
-        <Demo />
+      <Link to="/host/new-property" className="btn outline">
+        <Icon name="plus" /> {t.onboarding.addProperty}
+      </Link>
+      <Section icon="user" title={apiMode ? t.settings.account : t.settings.demo}>
+        {apiMode ? <Account /> : <Demo />}
       </Section>
       {toast.node}
     </Screen>
   );
 }
 
-function CategoryPrices({ category, onSaved }: { category: Category; onSaved: () => void }) {
-  const { update } = useStore();
+function CategoryPrices({ category, onSaved }: { category: Category; onSaved: (r: Result) => void }) {
+  const actions = useActions();
   const { t, lang } = useT();
   const [base, setBase] = useState(String(category.basePrice / 100));
   const [extra, setExtra] = useState(String(category.extraGuestPrice / 100));
   const [minNights, setMinNights] = useState(String(category.minNights));
   const [capacity, setCapacity] = useState(String(category.capacity));
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault();
     const basePrice = parseMajor(base);
     const extraGuestPrice = parseMajor(extra);
     const mn = Number(minNights);
     const cap = Number(capacity);
     if (basePrice === null || extraGuestPrice === null || !(mn >= 1) || !(cap >= 1)) return;
-    update((s) =>
-      updateCategory(s, category.id, {
-        basePrice,
-        extraGuestPrice,
-        minNights: Math.floor(mn),
-        capacity: Math.floor(cap),
-        baseOccupancy: Math.min(category.baseOccupancy, Math.floor(cap)),
-      }),
-    );
-    onSaved();
+    onSaved(await actions.updateCategory(category.id, { basePrice, extraGuestPrice, minNights: Math.floor(mn), capacity: Math.floor(cap) }));
   };
   return (
     <form className="card" onSubmit={save}>
@@ -132,8 +119,9 @@ function CategoryPrices({ category, onSaved }: { category: Category; onSaved: ()
   );
 }
 
-function Prices({ property, onSaved }: { property: Property; onSaved: () => void }) {
-  const { state, update } = useStore();
+function Prices({ property, onSaved }: { property: Property; onSaved: (r: Result) => void }) {
+  const { state } = useStore();
+  const actions = useActions();
   const { t, lang, fmtRange } = useT();
   const categories = state.categories.filter((c) => c.propertyId === property.id);
   const seasons = state.seasons.filter((s) => s.propertyId === property.id).sort((a, b) => a.from.localeCompare(b.from));
@@ -145,25 +133,22 @@ function Prices({ property, onSaved }: { property: Property; onSaved: () => void
   const [price, setPrice] = useState('');
   const [minNights, setMinNights] = useState('');
 
-  const add = (e: FormEvent) => {
+  const add = async (e: FormEvent) => {
     e.preventDefault();
     const minor = parseMajor(price);
     if (!name.trim() || minor === null || to < from) return;
-    const label = name.trim();
-    update((s) =>
-      addSeason(s, {
-        propertyId: property.id,
-        categoryId: categoryId || null,
-        name: { ru: label, ky: label, en: label },
-        from,
-        to,
-        price: minor,
-        minNights: Number(minNights) >= 1 ? Math.floor(Number(minNights)) : null,
-      }),
-    );
+    const r = await actions.addSeason(property.id, {
+      categoryId: categoryId || null,
+      name: name.trim(),
+      from,
+      to,
+      price: minor,
+      minNights: Number(minNights) >= 1 ? Math.floor(Number(minNights)) : null,
+    });
+    onSaved(r);
+    if (!r.ok) return;
     setName('');
     setPrice('');
-    onSaved();
   };
 
   return (
@@ -181,7 +166,7 @@ function Prices({ property, onSaved }: { property: Property; onSaved: () => void
           </span>
           <span className="row">
             <span className="strong">{formatMoney(s.price, property.currency, lang)}</span>
-            <button type="button" className="roundBtn small" aria-label={t.common.delete} onClick={() => update((st) => removeSeason(st, s.id))}>
+            <button type="button" className="roundBtn small" aria-label={t.common.delete} onClick={async () => onSaved(await actions.removeSeason(s.id))}>
               ×
             </button>
           </span>
@@ -223,24 +208,23 @@ function Prices({ property, onSaved }: { property: Property; onSaved: () => void
   );
 }
 
-function Rules({ property, onSaved }: { property: Property; onSaved: () => void }) {
-  const { update } = useStore();
+function Rules({ property, onSaved }: { property: Property; onSaved: (r: Result) => void }) {
+  const actions = useActions();
   const { t } = useT();
   const [percent, setPercent] = useState(String(property.cancellation.prepaymentPercent));
   const [days, setDays] = useState(String(property.cancellation.freeCancelDays));
   const [nonRefundable, setNonRefundable] = useState(property.cancellation.nonRefundable);
   const [methods, setMethods] = useState<PaymentMethod[]>(property.paymentMethods);
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault();
     const p = Math.min(100, Math.max(0, Math.floor(Number(percent) || 0)));
     const d = Math.max(0, Math.floor(Number(days) || 0));
-    update((s) =>
-      updateProperty(s, property.id, {
+    onSaved(
+      await actions.updateProperty(property.id, {
         cancellation: { prepaymentPercent: p, freeCancelDays: d, nonRefundable },
         paymentMethods: methods.length > 0 ? methods : ['cash'],
       }),
     );
-    onSaved();
   };
   const toggle = (m: PaymentMethod) => setMethods((ms) => (ms.includes(m) ? ms.filter((x) => x !== m) : [...ms, m]));
   return (
@@ -273,7 +257,8 @@ function Rules({ property, onSaved }: { property: Property; onSaved: () => void 
 }
 
 function ClosedDates({ property }: { property: Property }) {
-  const { state, update } = useStore();
+  const { state } = useStore();
+  const actions = useActions();
   const { t, fmtRange } = useT();
   const units = state.units.filter((u) => u.propertyId === property.id);
   const today = todayIn(property.timezone);
@@ -284,12 +269,15 @@ function ClosedDates({ property }: { property: Property }) {
   const [error, setError] = useState<string | null>(null);
   const blocks = state.blocks.filter((b) => b.reason === 'closed' && units.some((u) => u.id === b.unitId));
 
-  const add = (e: FormEvent) => {
+  const add = async (e: FormEvent) => {
     e.preventDefault();
     if (nightsBetween(from, to) < 1) return setError(t.property.badDates);
-    const result = addBlock(state, { unitId, from, to, reason: 'closed', label: reason.trim() || t.host.legend.closed });
-    if (!result.ok) return setError(`${t.create.conflict} ${result.conflicts.map((c) => c.label).join(', ')}`);
-    update(() => result.state);
+    const result = await actions.addBlock({ unitId, from, to, label: reason.trim() || t.host.legend.closed });
+    if (!result.ok) {
+      return setError(
+        result.code === 'dates_taken' ? `${t.create.conflict} ${(result.conflicts ?? []).map((c) => c.label).join(', ')}` : t.common.serverDown,
+      );
+    }
     setError(null);
     setReason('');
   };
@@ -302,7 +290,7 @@ function ClosedDates({ property }: { property: Property }) {
           <span>
             <strong>{units.find((u) => u.id === b.unitId)?.name}</strong> · {fmtRange(b.from, b.to)} · {b.label}
           </span>
-          <button type="button" className="roundBtn small" aria-label={t.common.delete} onClick={() => update((s) => removeBlock(s, b.id))}>
+          <button type="button" className="roundBtn small" aria-label={t.common.delete} onClick={() => void actions.removeBlock(b.id)}>
             ×
           </button>
         </div>
@@ -338,7 +326,9 @@ function ClosedDates({ property }: { property: Property }) {
 }
 
 function Ical({ property }: { property: Property }) {
-  const { state, update } = useStore();
+  const { state } = useStore();
+  const actions = useActions();
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const { t, fmtInstant } = useT();
   const units = state.units.filter((u) => u.propertyId === property.id);
   const channels = state.icalChannels.filter((c) => units.some((u) => u.id === c.unitId));
@@ -347,11 +337,11 @@ function Ical({ property }: { property: Property }) {
   const [url, setUrl] = useState('');
   const platformName = (p: IcalChannel['platform']) => (p === 'booking_com' ? 'Booking.com' : p === 'airbnb' ? 'Airbnb' : t.settings.other);
 
-  const add = (e: FormEvent) => {
+  const add = async (e: FormEvent) => {
     e.preventDefault();
     if (!/^https?:\/\/\S+$/.test(url.trim())) return;
-    update((s) => addIcalChannel(s, { unitId, platform, importUrl: url.trim() }));
-    setUrl('');
+    const r = await actions.addIcalChannel({ unitId, platform, importUrl: url.trim() });
+    if (r.ok) setUrl('');
   };
 
   return (
@@ -361,7 +351,7 @@ function Ical({ property }: { property: Property }) {
       {units.map((u) => (
         <div key={u.id} className="stack" style={{ gap: 2 }}>
           <span className="small strong">{u.name}</span>
-          <code className="small" style={{ wordBreak: 'break-all' }}>{`https://api.voyz.kg/ical/${property.slug}/${u.id}.ics`}</code>
+          <code className="small" style={{ wordBreak: 'break-all' }}>{state.icalUrls?.[u.id] ?? t.settings.exportAfterServer}</code>
         </div>
       ))}
       <strong style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 14 }}>{t.settings.importTitle}</strong>
@@ -372,7 +362,7 @@ function Ical({ property }: { property: Property }) {
             <strong>{units.find((u) => u.id === c.unitId)?.name}</strong> · {platformName(c.platform)} ·{' '}
             {c.lastSyncAt ? t.settings.lastSync(fmtInstant(c.lastSyncAt)) : t.settings.never}
           </span>
-          <button type="button" className="roundBtn small" aria-label={t.common.delete} onClick={() => update((s) => removeIcalChannel(s, c.id))}>
+          <button type="button" className="roundBtn small" aria-label={t.common.delete} onClick={() => void actions.removeIcalChannel(c.id)}>
             ×
           </button>
         </div>
@@ -403,24 +393,46 @@ function Ical({ property }: { property: Property }) {
           {t.common.add}
         </button>
       </form>
-      <p className="muted small">{t.settings.serverNote}</p>
+      {apiMode ? (
+        <div className="stack">
+          {channels.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className="btn small outline"
+              onClick={async () => {
+                const r = await actions.syncIcal(c.id);
+                setSyncMsg(r.ok ? t.settings.synced : t.common.serverDown);
+              }}
+            >
+              {t.settings.syncNow} · {units.find((u) => u.id === c.unitId)?.name}
+            </button>
+          ))}
+          {syncMsg && <p className="small">{syncMsg}</p>}
+        </div>
+      ) : (
+        <p className="muted small">{t.settings.serverNote}</p>
+      )}
     </>
   );
 }
 
-function Aynes() {
-  const { state, update, flush, syncing, online } = useStore();
+function Aynes({ property }: { property: Property }) {
+  const { state, flush, syncing, online } = useStore();
+  const actions = useActions();
   const { t, fmtInstant } = useT();
   const [key, setKey] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const { aynes, outbox } = state;
+  const aynes = aynesOf(state, property.id);
+  const outbox = state.outbox;
   const waiting = outbox.filter((o) => o.status !== 'sent').length;
 
-  const connect = (e: FormEvent) => {
+  const connect = async (e: FormEvent) => {
     e.preventDefault();
     const k = key.trim();
     if (!/^fsk_[A-Za-z0-9_-]{8,}$/.test(k)) return setError(t.settings.badKey);
-    update((s) => ({ ...s, aynes: { ...s.aynes, connected: true, keyHint: k.slice(-4) } }));
+    const r = await actions.connectAynes(property.id, k, aynes.shareGuestName);
+    if (!r.ok) return setError(t.common.serverDown);
     setKey('');
     setError(null);
   };
@@ -434,7 +446,7 @@ function Aynes() {
           <button
             type="button"
             className="btn small danger"
-            onClick={() => update((s) => ({ ...s, aynes: { ...s.aynes, connected: false, keyHint: null } }))}
+            onClick={() => void actions.disconnectAynes(property.id)}
           >
             {t.settings.disconnect}
           </button>
@@ -454,7 +466,7 @@ function Aynes() {
         <input
           type="checkbox"
           checked={aynes.shareGuestName}
-          onChange={(e) => update((s) => ({ ...s, aynes: { ...s.aynes, shareGuestName: e.target.checked } }))}
+          onChange={(e) => void actions.setShareGuestName(property.id, e.target.checked)}
         />
         <span>
           {t.settings.shareName}
@@ -466,7 +478,7 @@ function Aynes() {
         <strong>
           {t.settings.queue} {waiting > 0 ? `· ${waiting}` : ''}
         </strong>
-        <button type="button" className="btn small lime" disabled={!aynes.connected || !online || syncing || waiting === 0} onClick={() => void flush()}>
+        <button type="button" className="btn small lime" disabled={!aynes.connected || !online || syncing || (!apiMode && waiting === 0)} onClick={() => void (apiMode ? actions.flushOutbox(property.id) : flush())}>
           {t.settings.sendNow}
         </button>
       </div>
@@ -495,6 +507,25 @@ function Demo() {
       <p className="muted small">{t.common.demo}</p>
       <button type="button" className="btn small danger" onClick={() => window.confirm(t.settings.resetConfirm) && reset()}>
         {t.settings.reset}
+      </button>
+    </>
+  );
+}
+
+function Account() {
+  const { state, reset } = useStore();
+  const { t } = useT();
+  const logout = async () => {
+    await call('POST', 'api/auth/logout', {}, { auth: true }).catch(() => undefined);
+    hostToken.set(null);
+    reset();
+    window.location.hash = '#/';
+  };
+  return (
+    <>
+      <p className="small">{t.settings.signedInAs(state.host?.name ?? '')}</p>
+      <button type="button" className="btn small danger" onClick={logout}>
+        {t.settings.logout}
       </button>
     </>
   );

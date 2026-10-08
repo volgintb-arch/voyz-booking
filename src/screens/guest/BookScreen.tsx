@@ -1,20 +1,20 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Field, Screen } from '../../components/Layout';
-import { freeUnits } from '../../domain/availability';
-import { nowWithOffset } from '../../domain/dates';
 import { formatMoney } from '../../domain/money';
 import { quoteStay, validateStay } from '../../domain/pricing';
-import { createBooking } from '../../data/state';
 import { useStore } from '../../data/store';
 import { useT } from '../../i18n';
-import { channelFor, visitSource } from '../../share/links';
+import { useActions } from '../../data/actions';
+import { visitSource } from '../../share/links';
 import { useStayParams } from './params';
 
 export function BookScreen() {
   const { slug, categoryId } = useParams();
   const navigate = useNavigate();
-  const { state, update } = useStore();
+  const { state } = useStore();
+  const actions = useActions();
+  const [busy, setBusy] = useState(false);
   const { t, lang, fmtRange, fmtDate } = useT();
   const [stay, , query] = useStayParams();
   const [name, setName] = useState('');
@@ -39,39 +39,26 @@ export function BookScreen() {
   const money = (n: number) => formatMoney(n, property.currency, lang);
   const needsPrepayment = quote.prepaymentDue > 0;
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return setError(t.book.nameRequired);
     if (phone.replace(/\D/g, '').length < 9) return setError(t.book.phoneRequired);
     if (!consent) return setError(t.book.consentRequired);
-    const unit = freeUnits(state.units, category.id, stay.checkIn, stay.checkOut, state.bookings, state.blocks)[0];
-    if (!unit || problem) return setError(t.book.taken);
-    const result = createBooking(
-      state,
-      {
-        propertyId: property.id,
-        unitId: unit.id,
-        categoryId: category.id,
-        checkIn: stay.checkIn,
-        checkOut: stay.checkOut,
-        guests: stay.guests,
-        guestName: name.trim(),
-        guestPhone: phone.trim(),
-        channel: channelFor(visitSource()),
-        status: 'pending',
-        currency: property.currency,
-        total: quote.total,
-        prepaymentDue: quote.prepaymentDue,
-        nonRefundablePrepayment: policy.nonRefundable,
-        note: '',
-        createdBy: 'guest',
-        source: visitSource(),
-      },
-      nowWithOffset(property.timezone),
-    );
-    if (!result.ok) return setError(t.book.taken);
-    update(() => result.state);
-    navigate(needsPrepayment ? `/guest/pay/${result.booking.id}` : `/guest/done/${result.booking.id}`, { replace: true });
+    if (problem) return setError(t.book.taken);
+    setBusy(true);
+    const r = await actions.guestBook({
+      propertySlug: property.slug,
+      categoryId: category.id,
+      checkIn: stay.checkIn,
+      checkOut: stay.checkOut,
+      guests: stay.guests,
+      guestName: name.trim(),
+      guestPhone: phone.trim(),
+      source: visitSource(),
+    });
+    setBusy(false);
+    if (!r.ok) return setError(r.code === 'dates_taken' ? t.book.taken : r.code === 'offline' ? t.common.offline : t.common.serverDown);
+    navigate(needsPrepayment ? `/guest/pay/${r.value.id}` : `/guest/done/${r.value.id}`, { replace: true });
   };
 
   return (
@@ -134,7 +121,7 @@ export function BookScreen() {
           <span>{t.book.consent}</span>
         </label>
         {error && <p className="error">{error}</p>}
-        <button type="submit" className="btn block" disabled={!!problem}>
+        <button type="submit" className="btn block" disabled={!!problem || busy}>
           {t.book.submit}
         </button>
       </form>

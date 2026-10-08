@@ -14,6 +14,8 @@ import { PosterScreen } from './screens/host/PosterScreen';
 import { PromoScreen } from './screens/host/PromoScreen';
 import { SettingsScreen } from './screens/host/SettingsScreen';
 import { WelcomeScreen } from './screens/WelcomeScreen';
+import { GuestGate, HostGate } from './screens/gates';
+import { NewPropertyScreen } from './screens/host/NewPropertyScreen';
 
 // Hash routing: works the same on GitHub Pages, in the iOS/Android shell
 // (file-like origin) and inside a Telegram Mini App.
@@ -23,19 +25,24 @@ export function App() {
       <HashRouter>
         <Routes>
           <Route path="/" element={<WelcomeScreen />} />
-          <Route path="/guest" element={<SearchScreen />} />
-          <Route path="/guest/p/:slug" element={<PropertyScreen />} />
-          <Route path="/guest/p/:slug/book/:categoryId" element={<BookScreen />} />
-          <Route path="/guest/pay/:id" element={<PayScreen />} />
-          <Route path="/guest/done/:id" element={<DoneScreen />} />
-          <Route path="/guest/trips" element={<TripsScreen />} />
-          <Route path="/host" element={<BoardScreen />} />
-          <Route path="/host/bookings" element={<BookingsScreen />} />
-          <Route path="/host/b/:id" element={<BookingDetailScreen />} />
-          <Route path="/host/new" element={<NewBookingScreen />} />
-          <Route path="/host/settings" element={<SettingsScreen />} />
-          <Route path="/host/promo" element={<PromoScreen />} />
-          <Route path="/host/poster" element={<PosterScreen />} />
+          <Route element={<GuestGate />}>
+            <Route path="/guest" element={<SearchScreen />} />
+            <Route path="/guest/p/:slug" element={<PropertyScreen />} />
+            <Route path="/guest/p/:slug/book/:categoryId" element={<BookScreen />} />
+            <Route path="/guest/pay/:id" element={<PayScreen />} />
+            <Route path="/guest/done/:id" element={<DoneScreen />} />
+            <Route path="/guest/trips" element={<TripsScreen />} />
+          </Route>
+          <Route element={<HostGate />}>
+            <Route path="/host" element={<BoardScreen />} />
+            <Route path="/host/bookings" element={<BookingsScreen />} />
+            <Route path="/host/b/:id" element={<BookingDetailScreen />} />
+            <Route path="/host/new" element={<NewBookingScreen />} />
+            <Route path="/host/settings" element={<SettingsScreen />} />
+            <Route path="/host/promo" element={<PromoScreen />} />
+            <Route path="/host/poster" element={<PosterScreen />} />
+            <Route path="/host/new-property" element={<NewPropertyScreen />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </HashRouter>

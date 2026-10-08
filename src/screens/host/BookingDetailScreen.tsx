@@ -3,12 +3,13 @@ import { useParams } from 'react-router-dom';
 import { Field, Screen } from '../../components/Layout';
 import { StatusBadge } from '../../components/StatusBadge';
 import { useToast } from '../../components/Toast';
-import { nightsBetween, nowWithOffset } from '../../domain/dates';
+import { nightsBetween } from '../../domain/dates';
 import { bookingMoney } from '../../domain/ledger';
 import { formatMoney, parseMajor } from '../../domain/money';
 import type { BookingStatus, PaymentKind, PaymentMethod } from '../../domain/types';
 import { bookingPath } from '../../integrations/aynes';
-import { addPayment, confirmDepositReceived, extendHold, NEXT_STATUSES, updateBooking } from '../../data/state';
+import { aynesOf, useActions, type Result } from '../../data/actions';
+import { NEXT_STATUSES } from '../../data/state';
 import { useStore } from '../../data/store';
 import { useT } from '../../i18n';
 import { hostTabs } from './tabs';
@@ -19,7 +20,8 @@ const DEPOSIT_METHODS: PaymentMethod[] = ['qr', 'transfer', 'card', 'cash'];
 
 export function BookingDetailScreen() {
   const { id } = useParams();
-  const { state, update } = useStore();
+  const { state } = useStore();
+  const actions = useActions();
   const { t, lang, fmtRange, fmtInstant } = useT();
   const toast = useToast();
   const [showPay, setShowPay] = useState(false);
@@ -45,12 +47,12 @@ export function BookingDetailScreen() {
   const payments = state.payments.filter((p) => p.bookingId === booking.id);
   const money = bookingMoney(booking, state.payments);
   const fmt = (n: number) => formatMoney(n, booking.currency, lang);
-  const now = () => nowWithOffset(property.timezone);
+  const report = (r: Result<unknown>, success: string) =>
+    toast.show(r.ok ? success : r.code === 'offline' ? t.common.offline : r.code === 'conflict' ? t.detail.staleState : t.common.serverDown);
 
-  const setStatus = (status: BookingStatus) => {
+  const setStatus = async (status: BookingStatus) => {
     if (status === 'cancelled' && !window.confirm(t.detail.confirmCancel)) return;
-    update((s) => updateBooking(s, booking.id, status === 'cancelled' ? { status, cancelReason: 'host' } : { status }, now()));
-    toast.show(t.status[status]);
+    report(await actions.setStatus(booking.id, status), t.status[status]);
   };
 
   const openPay = () => {
@@ -60,33 +62,23 @@ export function BookingDetailScreen() {
     setShowPay(true);
   };
 
-  const submitPay = (e: FormEvent) => {
+  const submitPay = async (e: FormEvent) => {
     e.preventDefault();
     const minor = parseMajor(amount);
     if (!minor) return setPayError(t.detail.badAmount);
-    update((s) =>
-      addPayment(s, {
-        bookingId: booking.id,
-        kind,
-        method,
-        provider: provider.trim() || null,
-        amount: minor,
-        fee: 0,
-        currency: booking.currency,
-        paidAt: now(),
-        status: 'succeeded',
-      }),
-    );
-    setShowPay(false);
-    setPayError(null);
-    toast.show(t.common.saved);
+    const r = await actions.addPayment(booking.id, { kind, method, provider: provider.trim() || null, amount: minor });
+    report(r, t.common.saved);
+    if (r.ok) {
+      setShowPay(false);
+      setPayError(null);
+    }
   };
 
   const dates = fmtRange(booking.checkIn, booking.checkOut);
   const text = t.detail.confirmText(booking.guestName, property.name[lang], dates, booking.id);
   const phoneDigits = booking.guestPhone.replace(/\D/g, '');
   const outboxItem = state.outbox.find((o) => o.path === bookingPath(booking.id) && o.status !== 'sent');
-  const aynesLabel = !state.aynes.connected ? t.detail.aynesOff : outboxItem ? t.detail.aynesWaiting : t.detail.aynesSent;
+  const aynesLabel = !aynesOf(state, property.id).connected ? t.detail.aynesOff : outboxItem ? t.detail.aynesWaiting : t.detail.aynesSent;
 
   return (
     <Screen title={t.detail.title(booking.id)} back={`/host/bookings?p=${property.slug}`} tabs={hostTabs(t)}>
@@ -156,15 +148,12 @@ export function BookingDetailScreen() {
             <button
               type="button"
               className="btn lime"
-              onClick={() => {
-                update((s) => confirmDepositReceived(s, booking.id, depositMethod, null, now()));
-                toast.show(t.deposit.received);
-              }}
+              onClick={async () => report(await actions.confirmDeposit(booking.id, depositMethod), t.deposit.received)}
             >
               {t.deposit.receivedBtn}
             </button>
             {booking.holdUntil && (
-              <button type="button" className="btn outline" onClick={() => update((s) => extendHold(s, booking.id, 12))}>
+              <button type="button" className="btn outline" onClick={async () => report(await actions.extendHold(booking.id, 12), t.common.saved)}>
                 {t.deposit.extend(12)}
               </button>
             )}

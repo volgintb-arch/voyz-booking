@@ -11,7 +11,7 @@ import { telegramRoutes } from './routes/telegram';
 import type { TelegramApi } from './services/telegram';
 
 export async function buildApp(ctx: Ctx, api: TelegramApi, opts: { logger?: boolean } = {}) {
-  const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 1_000_000, trustProxy: true });
+  const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 1_000_000, trustProxy: true, ignoreTrailingSlash: true });
   await app.register(cors, {
     origin: (origin, cb) => {
       // Native apps and server-to-server calls send no Origin.

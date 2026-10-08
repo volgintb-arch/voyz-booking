@@ -7,6 +7,7 @@ import type { Config } from '../config';
 import type { Ctx } from '../context';
 import { newId } from '../crypto';
 import { many, one, type Db } from '../db';
+import { createHash } from 'node:crypto';
 import { botCopy } from './bot-copy';
 
 export interface Notifier {
@@ -310,6 +311,14 @@ export async function morningSummary(ctx: Ctx, api: TelegramApi): Promise<number
 
 // ---------- Webhook health ----------
 
+/**
+ * URL-safe id derived from TELEGRAM_WEBHOOK_SECRET. Generated secrets may contain
+ * "/", "+" or "=" which break the URL path (Telegram then gets 404).
+ */
+export function webhookId(secret: string): string {
+  return createHash('sha256').update(`tg-webhook:${secret}`).digest('hex').slice(0, 48);
+}
+
 export interface BotStatus {
   tokenSet: boolean;
   secretSet: boolean;
@@ -344,7 +353,8 @@ export async function ensureWebhook(ctx: Ctx, api: TelegramApi): Promise<BotStat
   if (!me.ok) return { ...status, lastError: me.description ?? 'getMe failed' };
   status.botUsername = me.result?.username ?? null;
   if (!secret) return { ...status, lastError: 'TELEGRAM_WEBHOOK_SECRET is empty' };
-  const want = `${ctx.config.API_URL}api/telegram/webhook/${secret}`;
+  const id = webhookId(secret);
+  const want = `${ctx.config.API_URL}api/telegram/webhook/${id}`;
   const info = await api.raw<{ url: string; pending_update_count: number; last_error_message?: string }>('getWebhookInfo');
   if (info.ok && info.result) {
     status.webhookHost = info.result.url ? new URL(info.result.url).host : null;
@@ -353,7 +363,7 @@ export async function ensureWebhook(ctx: Ctx, api: TelegramApi): Promise<BotStat
     status.webhookOk = info.result.url === want;
   }
   if (!status.webhookOk) {
-    const set = await api.raw('setWebhook', { url: want, allowed_updates: ['message', 'callback_query'] });
+    const set = await api.raw('setWebhook', { url: want, secret_token: id, allowed_updates: ['message', 'callback_query'] });
     status.fixed = set.ok;
     status.webhookOk = set.ok;
     if (!set.ok) status.lastError = set.description ?? 'setWebhook failed';

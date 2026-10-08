@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { api, bearer, devToken, harness, type Harness } from './helpers';
 import { createHmac } from 'node:crypto';
 import { verifyWebAppInitData } from '../src/services/auth';
+import { webhookId } from '../src/services/telegram';
 import { expireHolds } from '../src/services/bookings';
 import { flushOutbox } from '../src/services/outbox';
 import { parseIcs } from '../src/services/ical';
@@ -86,7 +87,7 @@ describe('host', () => {
 
     const hook = await h.app.inject({
       method: 'POST',
-      url: '/api/telegram/webhook/hook',
+      url: `/api/telegram/webhook/${webhookId('hook')}`,
       payload: { message: { chat: { id: 777 }, from: { id: 777, first_name: 'Нурлан', language_code: 'ru' }, text: `/start login_${start.data.code}` } },
     });
     expect(hook.statusCode).toBe(200);
@@ -143,7 +144,7 @@ describe('host', () => {
     const g = await api<BookingResp>(h, 'POST', '/api/public/properties/son-kul-aiyl/bookings', { categoryId: 'c-sk-std', ...stay, ...guest });
     await h.app.inject({
       method: 'POST',
-      url: '/api/telegram/webhook/hook',
+      url: `/api/telegram/webhook/${webhookId('hook')}`,
       payload: { callback_query: { id: 'cb1', from: { id: 555, first_name: 'Б' }, data: `c:${g.data.booking.id}`, message: { chat: { id: 555 }, message_id: 1, text: 'Новая бронь' } } },
     });
     const row = await h.db.query('select status from bookings where id = $1', [g.data.booking.id]);
@@ -237,12 +238,16 @@ describe('telegram webhook', () => {
     const r = await api<{ webhookOk: boolean; fixed: boolean; botUsername: string }>(h, 'GET', '/api/telegram/status');
     expect(r.data).toMatchObject({ webhookOk: true, fixed: true, botUsername: 'voyz_test_bot' });
     const set = h.calls.find((c) => c.url.endsWith('/setWebhook'));
-    expect(set?.body).toMatchObject({ url: 'https://api.test/api/telegram/webhook/hook' });
-    expect(JSON.stringify(r.data)).not.toContain('hook/hook');
+    expect(set?.body).toMatchObject({ url: `https://api.test/api/telegram/webhook/${webhookId('hook')}`, secret_token: webhookId('hook') });
+    expect(JSON.stringify(r.data)).not.toContain(webhookId('hook'));
   });
 });
 
 describe('config', () => {
+  it('keeps the webhook path URL-safe whatever the generated secret is', () => {
+    expect(webhookId('a/b+c==')).toMatch(/^[0-9a-f]{48}$/);
+  });
+
   it('accepts the bot name with or without @', async () => {
     const { loadConfig } = await import('../src/config');
     const base = { DATABASE_URL: 'x', SERVER_SECRET: 'x'.repeat(32) };

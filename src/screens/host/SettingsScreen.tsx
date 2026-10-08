@@ -31,7 +31,7 @@ export function SettingsScreen() {
   const toast = useToast();
   const saved = (r: Result) => toast.show(r.ok ? t.common.saved : r.code === 'offline' ? t.common.offline : t.common.serverDown);
   return (
-    <Screen title={t.host.tabSettings} back="/" tabs={hostTabs(t)}>
+    <Screen title={t.host.tabSettings} tabs={hostTabs(t)}>
       {apiMode && <AccountStrip />}
       {property ? (
         <>

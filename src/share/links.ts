@@ -79,6 +79,19 @@ export function visitSource(): LinkSource {
   return isLinkSource(src) ? src : 'direct';
 }
 
+function inFrame(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true; // a cross-origin parent: we are inside someone's site
+  }
+}
+
+/**
+ * Widget mode (no tab bar) only inside the site's iframe. The flag alone is not
+ * enough: browsers copy sessionStorage into tabs opened from a link, so a host who
+ * opened the widget link full-screen would lose the menu for the whole visit.
+ */
 export function isEmbedded(): boolean {
-  return read(EMBED_KEY) === '1';
+  return read(EMBED_KEY) === '1' && inFrame();
 }

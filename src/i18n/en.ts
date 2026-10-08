@@ -33,6 +33,7 @@ export const en: Dict = {
     host: 'I host guests',
     hostHint: 'Calendar, bookings and payments from your phone',
     switchRole: 'Switch role',
+    roleShort: 'Profile',
     bandTitle: 'Yurts and houses',
     bandAccent: 'straight from hosts',
     bandText: 'Deposits go directly to the host, who confirms the booking.',

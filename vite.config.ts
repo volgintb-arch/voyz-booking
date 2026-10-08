@@ -37,8 +37,8 @@ export default defineConfig({
       workbox: {
         // Fonts: only the Latin and Cyrillic subsets (Kyrgyz letters live in cyrillic-ext).
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}', 'assets/*-{latin,latin-ext,cyrillic,cyrillic-ext}-*.woff2'],
-        globIgnores: ['s/**', 'widget.js', 'og.png'],
-        navigateFallbackDenylist: [/\/s\//],
+        globIgnores: ['s/**', 'widget.js', 'widget-preview.html', 'og.png'],
+        navigateFallbackDenylist: [/\/s\//, /widget-preview\.html/],
         // Property photos from the server: keep them for offline viewing in the mountains.
         runtimeCaching: [
           {

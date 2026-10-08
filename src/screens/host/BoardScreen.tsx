@@ -39,7 +39,7 @@ export function BoardScreen() {
 
   if (!property) {
     return (
-      <Screen title={t.host.tabBoard} back="/" tabs={hostTabs(t)}>
+      <Screen title={t.host.tabBoard} tabs={hostTabs(t)}>
         <div className="card accent center" style={{ alignItems: 'center' }}>
           <p className="strong">{t.host.noProperties}</p>
           <p className="muted small">{t.onboarding.intro}</p>
@@ -84,7 +84,7 @@ export function BoardScreen() {
   };
 
   return (
-    <Screen title={t.host.tabBoard} back="/" tabs={hostTabs(t)}>
+    <Screen title={t.host.tabBoard} tabs={hostTabs(t)}>
       <div className="row" style={{ alignItems: 'center' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <PropertySwitch properties={properties} value={property} onChange={select} />

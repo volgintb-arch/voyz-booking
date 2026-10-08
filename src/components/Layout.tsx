@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../data/store';
 import { LANGS, useT } from '../i18n';
 import { isEmbedded } from '../share/links';
@@ -21,7 +21,16 @@ export interface Tab {
   to: string;
   icon: IconName;
   label: string;
+  /** Label under the icon on phones, when the full one does not fit. */
+  short?: string;
   end?: boolean;
+  /** Nested screens of this section: the tab stays highlighted there. */
+  also?: string[];
+}
+
+function tabActive(tab: Tab, path: string): boolean {
+  if (tab.end ? path === tab.to : path === tab.to || path.startsWith(`${tab.to}/`)) return true;
+  return (tab.also ?? []).some((p) => path.startsWith(p));
 }
 
 interface ScreenProps {
@@ -35,6 +44,7 @@ interface ScreenProps {
 
 export function Screen({ title, back, tabs, bar, children }: ScreenProps) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { online } = useStore();
   const { t } = useT();
   // Inside the site widget there is no app around the booking flow.
@@ -61,18 +71,22 @@ export function Screen({ title, back, tabs, bar, children }: ScreenProps) {
       {tabs && !bar && (
         <div className="tabbar">
           <nav>
-            {tabs.map((tab) => (
-              <NavLink
-                key={tab.to}
-                to={tab.to}
-                end={tab.end}
-                aria-label={tab.label}
-                title={tab.label}
-                className={({ isActive }) => (isActive ? 'active' : '')}
-              >
-                <Icon name={tab.icon} size={28} />
-              </NavLink>
-            ))}
+            {tabs.map((tab) => {
+              const active = tabActive(tab, pathname);
+              return (
+                <Link
+                  key={tab.to}
+                  to={tab.to}
+                  aria-label={tab.label}
+                  aria-current={active ? 'page' : undefined}
+                  title={tab.label}
+                  data-short={tab.short ?? tab.label}
+                  className={active ? 'active' : ''}
+                >
+                  <Icon name={tab.icon} size={26} />
+                </Link>
+              );
+            })}
           </nav>
         </div>
       )}

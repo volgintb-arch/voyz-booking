@@ -16,7 +16,7 @@ export function TripsScreen() {
   const { trips, loading, reload } = useGuestTrips();
 
   return (
-    <Screen title={t.trips.title} back="/" tabs={guestTabs(t)}>
+    <Screen title={t.trips.title} tabs={guestTabs(t)}>
       {trips.length === 0 && <p className="muted">{loading ? t.common.loading : t.trips.empty}</p>}
       {trips.map((view) => {
         const { booking: b, paid, property, categoryName, refundIfCancelled } = view;

@@ -42,7 +42,7 @@ export function NewBookingScreen() {
 
   if (!property) {
     return (
-      <Screen title={t.create.title} back="/host" tabs={hostTabs(t)}>
+      <Screen title={t.create.title} tabs={hostTabs(t)}>
         <NoProperties />
       </Screen>
     );
@@ -83,7 +83,7 @@ export function NewBookingScreen() {
   };
 
   return (
-    <Screen title={t.create.title} back="/host" tabs={hostTabs(t)}>
+    <Screen title={t.create.title} tabs={hostTabs(t)}>
       <PropertySwitch properties={properties} value={property} onChange={select} />
       <form className="stack" onSubmit={submit} noValidate>
         <Field label={t.create.unit}>

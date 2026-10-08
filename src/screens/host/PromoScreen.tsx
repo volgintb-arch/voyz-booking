@@ -15,7 +15,7 @@ import { useStore } from '../../data/store';
 import { NoProperties } from '../../components/NoProperties';
 import { useT } from '../../i18n';
 import { copyText, shareNative } from '../../share/clipboard';
-import { appUrl, LINK_SOURCES, shareUrl } from '../../share/links';
+import { LINK_SOURCES, shareUrl } from '../../share/links';
 import { PropertySwitch } from './PropertySwitch';
 import { hostTabs } from './tabs';
 import { useHostProperty } from './useHostProperty';
@@ -156,7 +156,7 @@ export function PromoScreen() {
           <Icon name="copy" size={18} /> {t.promo.copyCode}
         </button>
       </div>
-      <a className="btn outline" href={appUrl(PUBLIC_URL, property.slug, { src: 'site', embed: true })} target="_blank" rel="noreferrer">
+      <a className="btn outline" href={`${PUBLIC_URL}widget-preview.html?p=${encodeURIComponent(property.slug)}`} target="_blank" rel="noreferrer">
         <Icon name="code" /> {t.promo.widgetPreview}
       </a>
       <p className="muted tiny">{t.promo.noSite}</p>

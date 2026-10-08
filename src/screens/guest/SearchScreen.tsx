@@ -33,7 +33,7 @@ export function SearchScreen() {
     .sort((a, b) => Number(b.free > 0) - Number(a.free > 0));
 
   return (
-    <Screen title={t.search.title} back="/" tabs={guestTabs(t)}>
+    <Screen title={t.search.title} tabs={guestTabs(t)}>
       <StayPicker stay={stay} onChange={setStay} />
       <div className="chips">
         <button type="button" className="chip" aria-pressed={region === null} onClick={() => setRegion(null)}>

@@ -115,7 +115,13 @@ button { font-family: inherit; }
   box-shadow: 0 8px 30px rgb(0 0 0 / 0.12);
 }
 .tabbar a {
-  width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; color: var(--black); text-decoration: none;
+  flex: 1; min-width: 0; max-width: 104px; height: 60px; border-radius: 24px; color: var(--black); text-decoration: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+}
+/* A word under every icon: hosts should not have to guess what an icon means. */
+.tabbar a::after {
+  content: attr(data-short); font-size: 11px; font-weight: 700; line-height: 1.1;
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .tabbar a.active { background: var(--lime); box-shadow: var(--lime-glow); }
 
@@ -413,8 +419,8 @@ code { font-size: 13px; }
     padding: 0 20px 8px; background: rgb(255 255 255 / 0.92); backdrop-filter: blur(10px);
   }
   .tabbar nav { max-width: none; height: 60px; box-shadow: none; }
-  .tabbar a { width: auto; height: 48px; border-radius: var(--pill); padding: 0 18px; gap: 8px; display: inline-flex; align-items: center; }
-  .tabbar a::after { content: attr(title); font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .tabbar a { flex: none; max-width: none; height: 48px; border-radius: var(--pill); padding: 0 18px; gap: 8px; flex-direction: row; }
+  .tabbar a::after { content: attr(title); font-size: 15px; font-weight: 600; }
   .bookbar > div { border-radius: 32px 32px 0 0; }
   .toast { bottom: 32px; }
 }

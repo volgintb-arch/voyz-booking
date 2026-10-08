@@ -24,7 +24,7 @@ export function BookingsScreen() {
 
   if (!property) {
     return (
-      <Screen title={t.host.tabBookings} back="/" tabs={hostTabs(t)}>
+      <Screen title={t.host.tabBookings} tabs={hostTabs(t)}>
         <NoProperties />
       </Screen>
     );
@@ -43,7 +43,7 @@ export function BookingsScreen() {
   const list = own.filter(match[filter]).sort((a, b) => a.checkIn.localeCompare(b.checkIn));
 
   return (
-    <Screen title={t.host.tabBookings} back="/" tabs={hostTabs(t)}>
+    <Screen title={t.host.tabBookings} tabs={hostTabs(t)}>
       <PropertySwitch properties={properties} value={property} onChange={select} />
       <div className="chips">
         {FILTERS.map((f) => (

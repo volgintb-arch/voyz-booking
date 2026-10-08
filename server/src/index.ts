@@ -2,12 +2,15 @@ import { buildApp } from './app';
 import { loadConfig } from './config';
 import type { Ctx } from './context';
 import { createPool, migrate } from './db';
+import { seedDemo } from './demo';
 import { TelegramApi, TelegramNotifier } from './services/telegram';
 import { startWorkers } from './workers';
 
 const config = loadConfig();
 const db = createPool(config.DATABASE_URL);
 const applied = await migrate(db);
+// Pilot demo (dev sign-in allowed): an empty database gets the four demo properties.
+if (config.ALLOW_DEV_LOGIN && (await seedDemo(db))) console.log('demo data inserted');
 
 const api = new TelegramApi(config.TELEGRAM_BOT_TOKEN, fetch);
 const ctx: Ctx = { db, config, notify: new TelegramNotifier(db, config, api), now: () => new Date(), fetch };

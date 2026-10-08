@@ -229,6 +229,16 @@ describe('iCal and share links', () => {
   });
 });
 
+describe('config', () => {
+  it('accepts the bot name with or without @', async () => {
+    const { loadConfig } = await import('../src/config');
+    const base = { DATABASE_URL: 'x', SERVER_SECRET: 'x'.repeat(32) };
+    expect(loadConfig({ ...base, TELEGRAM_BOT_USERNAME: '@voyz_bot' }).TELEGRAM_BOT_USERNAME).toBe('voyz_bot');
+    expect(loadConfig({ ...base, TELEGRAM_BOT_USERNAME: 'https://t.me/voyz_bot' }).TELEGRAM_BOT_USERNAME).toBe('voyz_bot');
+    expect(loadConfig({ ...base, RENDER_EXTERNAL_URL: 'https://x.onrender.com' }).API_URL).toBe('https://x.onrender.com/');
+  });
+});
+
 describe('Telegram Mini App sign-in', () => {
   it('accepts initData signed with the bot token and rejects tampering', () => {
     const token = '123:ABC';

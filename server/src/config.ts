@@ -9,7 +9,11 @@ const Env = z.object({
   CORS_ORIGINS: z.string().default(''),
   SERVER_SECRET: z.string().min(32, 'SERVER_SECRET must be at least 32 characters'),
   TELEGRAM_BOT_TOKEN: z.string().default(''),
-  TELEGRAM_BOT_USERNAME: z.string().default(''),
+  // "@voyz_bot" and "voyz_bot" both work.
+  TELEGRAM_BOT_USERNAME: z
+    .string()
+    .default('')
+    .transform((v) => v.trim().replace(/^@/, '').replace(/^https?:\/\/t\.me\//, '')),
   TELEGRAM_WEBHOOK_SECRET: z.string().default(''),
   AYNES_API_URL: z.string().url().default('https://aynes.pro'),
   ALLOW_DEV_LOGIN: z

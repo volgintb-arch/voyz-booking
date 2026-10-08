@@ -5,7 +5,6 @@ import { conflictsFor, type Conflict } from '../domain/availability';
 import type {
   Block,
   Booking,
-  BookingStatus,
   Category,
   IcalChannel,
   Lang,
@@ -117,15 +116,7 @@ export function updateBooking(
   return { ...next, outbox: queueBooking(next, updated, now) };
 }
 
-/** Status changes the host may make from each status. */
-export const NEXT_STATUSES: Record<BookingStatus, BookingStatus[]> = {
-  pending: ['confirmed', 'cancelled'],
-  confirmed: ['checked_in', 'no_show', 'cancelled'],
-  checked_in: ['checked_out'],
-  checked_out: [],
-  cancelled: [],
-  no_show: [],
-};
+export { NEXT_STATUSES } from '../domain/status';
 
 export function addPayment(state: AppState, payment: Omit<Payment, 'id'>): AppState {
   const seq = state.seq + 1;

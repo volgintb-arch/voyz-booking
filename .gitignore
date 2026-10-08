@@ -10,3 +10,6 @@ android/build
 ios/App/build
 ios/App/Pods
 ios/DerivedData
+server/node_modules
+server/dist
+server/.env

@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'android', 'ios', 'node_modules', 'dev-dist'] },
+  { ignores: ['dist', 'android', 'ios', 'node_modules', 'dev-dist', 'server/dist', 'server/node_modules'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -16,7 +16,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['scripts/**/*.mjs'],
+    files: ['scripts/**/*.mjs', 'server/**/*.ts', 'share-pages.ts'],
     languageOptions: { globals: globals.node },
   },
 );

@@ -7,6 +7,7 @@ import { bookingMoney } from '../../domain/ledger';
 import { formatMoney } from '../../domain/money';
 import type { Booking } from '../../domain/types';
 import { useStore } from '../../data/store';
+import { NoProperties } from '../../components/NoProperties';
 import { useT } from '../../i18n';
 import { PropertySwitch } from './PropertySwitch';
 import { hostTabs } from './tabs';
@@ -24,7 +25,7 @@ export function BookingsScreen() {
   if (!property) {
     return (
       <Screen title={t.host.tabBookings} back="/" tabs={hostTabs(t)}>
-        <p className="muted">{t.host.noProperties}</p>
+        <NoProperties />
       </Screen>
     );
   }

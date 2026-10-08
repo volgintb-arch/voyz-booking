@@ -8,6 +8,7 @@ import { quoteStay } from '../../domain/pricing';
 import type { Channel } from '../../domain/types';
 import { useActions } from '../../data/actions';
 import { useStore } from '../../data/store';
+import { NoProperties } from '../../components/NoProperties';
 import { useT } from '../../i18n';
 import { PropertySwitch } from './PropertySwitch';
 import { hostTabs } from './tabs';
@@ -25,7 +26,7 @@ export function NewBookingScreen() {
   const { properties, property, select } = useHostProperty();
 
   const units = state.units.filter((u) => u.propertyId === property?.id);
-  const today = property ? todayIn(property.timezone) : '';
+  const today = todayIn(property?.timezone ?? 'Asia/Bishkek');
   const qIn = params.get('in') ?? '';
   const [unitId, setUnitId] = useState(() => units.find((u) => u.id === params.get('unit'))?.id ?? units[0]?.id ?? '');
   const [checkIn, setCheckIn] = useState(isIsoDate(qIn) ? qIn : today);
@@ -42,7 +43,7 @@ export function NewBookingScreen() {
   if (!property) {
     return (
       <Screen title={t.create.title} back="/host" tabs={hostTabs(t)}>
-        <p className="muted">{t.host.noProperties}</p>
+        <NoProperties />
       </Screen>
     );
   }

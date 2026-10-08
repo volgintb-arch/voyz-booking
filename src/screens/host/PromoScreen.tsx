@@ -11,6 +11,7 @@ import { addDays, todayIn } from '../../domain/dates';
 import { formatMoney } from '../../domain/money';
 import type { LinkSource } from '../../domain/types';
 import { useStore } from '../../data/store';
+import { NoProperties } from '../../components/NoProperties';
 import { useT } from '../../i18n';
 import { copyText, shareNative } from '../../share/clipboard';
 import { appUrl, LINK_SOURCES, shareUrl } from '../../share/links';
@@ -34,7 +35,7 @@ export function PromoScreen() {
   if (!property) {
     return (
       <Screen title={t.promo.title} back="/host" tabs={hostTabs(t)}>
-        <p className="muted">{t.host.noProperties}</p>
+        <NoProperties />
       </Screen>
     );
   }

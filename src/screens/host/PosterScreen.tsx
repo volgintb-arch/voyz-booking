@@ -3,6 +3,7 @@ import { Icon } from '../../components/Icon';
 import { Screen } from '../../components/Layout';
 import { QrCode, qrSvg } from '../../components/QrCode';
 import { SHARE_URL } from '../../config';
+import { NoProperties } from '../../components/NoProperties';
 import { DICTS, useT } from '../../i18n';
 import { shareUrl } from '../../share/links';
 import { useHostProperty } from './useHostProperty';
@@ -29,7 +30,7 @@ export function PosterScreen() {
   if (!property) {
     return (
       <Screen title={t.promo.posterTitle} back="/host/promo">
-        <p className="muted">{t.host.noProperties}</p>
+        <NoProperties />
       </Screen>
     );
   }

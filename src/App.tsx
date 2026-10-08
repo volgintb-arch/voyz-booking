@@ -1,4 +1,5 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { StoreProvider } from './data/store';
 import { BookScreen } from './screens/guest/BookScreen';
 import { DoneScreen } from './screens/guest/DoneScreen';
@@ -22,6 +23,7 @@ import { EditPropertyScreen } from './screens/host/EditPropertyScreen';
 // (file-like origin) and inside a Telegram Mini App.
 export function App() {
   return (
+    <ErrorBoundary>
     <StoreProvider>
       <HashRouter>
         <Routes>
@@ -49,5 +51,6 @@ export function App() {
         </Routes>
       </HashRouter>
     </StoreProvider>
+    </ErrorBoundary>
   );
 }

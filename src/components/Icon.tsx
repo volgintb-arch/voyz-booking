@@ -27,6 +27,8 @@ const ICONS = {
   code: <path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" />,
   link: <path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" />,
   qr: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3" /></>,
+  image: <><rect x="3" y="4.5" width="18" height="15" rx="3" /><circle cx="9" cy="10" r="2" /><path d="m21 16-5-5-9.5 8.5" /></>,
+  book: <><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v16H7.5A2.5 2.5 0 0 0 5 20.5Z" /><path d="M5 20.5A2.5 2.5 0 0 0 7.5 23H19v-5M9 7h6" /></>,
   upload: <path d="M12 16V4m-5 5 5-5 5 5M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />,
   sparkle: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" />,
 } as const;

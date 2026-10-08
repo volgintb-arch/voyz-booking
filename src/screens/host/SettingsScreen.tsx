@@ -10,6 +10,7 @@ import { apiMode, call, hostToken } from '../../api/client';
 import { aynesOf, useActions, type Result } from '../../data/actions';
 import { useStore } from '../../data/store';
 import { copyText } from '../../share/clipboard';
+import { HelpLink } from '../../components/HelpLink';
 import { useT } from '../../i18n';
 import { PaymentSettings } from './PaymentSettings';
 import { PropertySwitch } from './PropertySwitch';
@@ -46,6 +47,16 @@ export function SettingsScreen() {
             </Link>
           </div>
           <div>
+          <Link to="/host/help" className="articleCard">
+            <span className="roundBtn lime small" aria-hidden>
+              <Icon name="book" size={20} />
+            </span>
+            <span className="stack" style={{ gap: 2, flex: 1, minWidth: 0 }}>
+              <b>{t.help.title}</b>
+              <span className="muted small">{t.help.subtitle}</span>
+            </span>
+            <Icon name="chevron" />
+          </Link>
           <Link to={`/host/promo?p=${property.slug}`} className="promo" style={{ minHeight: 64 }}>
             <strong>
               {t.promo.title}
@@ -359,6 +370,7 @@ function Ical({ property, notify }: { property: Property; notify: (text: string)
   return (
     <>
       <p className="small">{t.settings.icalWhy}</p>
+      <HelpLink article="ota-sync" />
       <strong>{t.settings.exportTitle}</strong>
       <p className="muted small">{t.settings.exportHint}</p>
       {units.map((u) => {
@@ -470,6 +482,7 @@ function Aynes({ property }: { property: Property }) {
   return (
     <>
       <p className="small">{t.settings.aynesIntro}</p>
+      <HelpLink article="aynes" />
       {aynes.connected ? (
         <>
           <div className="row between">

@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
+    "guide": "UPDATE_GUIDE=1 vitest run src/help",
     "lint": "eslint .",
     "cap:sync": "npm run build && cap sync"
   },

@@ -456,3 +456,22 @@ img.cover.photo { object-fit: cover; background: var(--soft); }
 .photoCell[aria-pressed='true'] { outline: 3px solid var(--lime); outline-offset: 2px; }
 .photoCell .badge { position: absolute; left: 6px; top: 6px; }
 .photoAdd { display: grid; place-items: center; aspect-ratio: 1; border-radius: 18px; border: 1.5px dashed var(--line); color: var(--muted); cursor: pointer; text-align: center; font-size: 13px; padding: 8px; }
+
+/* ---------- Host education (Настройки → Обучение) ---------- */
+.articleCard {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--r-xl);
+  border: 1.5px solid var(--line-soft); color: inherit; text-decoration: none; background: #fff;
+}
+.articleCard:hover { border-color: var(--lime); }
+.article { display: flex; flex-direction: column; gap: 12px; line-height: 1.55; }
+.article h2 { margin: 0; font-size: 24px; }
+.article h3 { margin: 8px 0 0; font-size: 18px; }
+.article p, .article ol, .article ul { margin: 0; }
+.article ol, .article ul { padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+.article ol.steps li::marker { font-weight: 800; }
+.note { padding: 12px 16px; border-radius: 18px; font-size: 15px; }
+.note.tip { background: var(--lime-soft); }
+.note.tip::before { content: '💡 '; }
+.note.warn { background: #fff1dc; }
+.note.warn::before { content: '⚠️ '; }
+.helpLink { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: inherit; }

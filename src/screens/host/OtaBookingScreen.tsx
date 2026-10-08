@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { HelpLink } from '../../components/HelpLink';
 import { Field, Screen } from '../../components/Layout';
 import { nightsBetween } from '../../domain/dates';
 import { formatMoney, parseMajor } from '../../domain/money';
@@ -78,6 +79,7 @@ export function OtaBookingScreen() {
         </span>
       </div>
       <p className="banner info">{t.ota.intro(site)}</p>
+      <HelpLink article="ota-money" />
 
       <form className="stack" onSubmit={submit} noValidate>
         <div className="grid2">

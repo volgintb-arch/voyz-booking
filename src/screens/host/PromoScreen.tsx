@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DateRange } from '../../components/DateRange';
+import { HelpLink } from '../../components/HelpLink';
 import { Icon } from '../../components/Icon';
 import { Screen, SectionHead } from '../../components/Layout';
 import { QrCode } from '../../components/QrCode';
@@ -57,6 +58,7 @@ export function PromoScreen() {
   return (
     <Screen title={t.promo.title} back="/host" tabs={hostTabs(t)}>
       <PropertySwitch properties={properties} value={property} onChange={select} />
+      <HelpLink article="promo" />
 
       <SectionHead>{t.promo.linkTitle}</SectionHead>
       <div className="chips">

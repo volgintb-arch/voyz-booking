@@ -19,6 +19,7 @@ import { WelcomeScreen } from './screens/WelcomeScreen';
 import { GuestGate, HostGate } from './screens/gates';
 import { NewPropertyScreen } from './screens/host/NewPropertyScreen';
 import { OtaBookingScreen } from './screens/host/OtaBookingScreen';
+import { ArticleScreen, HelpScreen } from './screens/host/HelpScreen';
 import { EditPropertyScreen } from './screens/host/EditPropertyScreen';
 
 // Hash routing: works the same on GitHub Pages, in the iOS/Android shell
@@ -44,6 +45,8 @@ export function App() {
             <Route path="/host/bookings" element={<BookingsScreen />} />
             <Route path="/host/b/:id" element={<BookingDetailScreen />} />
             <Route path="/host/ota/:id" element={<OtaBookingScreen />} />
+            <Route path="/host/help" element={<HelpScreen />} />
+            <Route path="/host/help/:id" element={<ArticleScreen />} />
             <Route path="/host/new" element={<NewBookingScreen />} />
             <Route path="/host/settings" element={<SettingsScreen />} />
             <Route path="/host/promo" element={<PromoScreen />} />

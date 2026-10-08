@@ -242,6 +242,15 @@ export const en: Dict = {
     conflictBlock: 'closed',
     hint: 'The booking is saved on the phone even without network',
   },
+  help: {
+    title: 'Learn',
+    subtitle: 'Short articles: running your place, finding guests, bookkeeping',
+    minutes: (n: number) => `${n} min`,
+    next: 'Next article',
+    all: 'All articles',
+    ruOnly: 'The articles are in Russian for now.',
+    how: 'How does it work?',
+  },
   ota: {
     title: 'Booking from a site',
     intro: (site: string) =>

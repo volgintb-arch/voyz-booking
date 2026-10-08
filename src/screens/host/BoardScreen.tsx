@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { HelpLink } from '../../components/HelpLink';
 import { Icon } from '../../components/Icon';
 import { Screen } from '../../components/Layout';
 import { holdsUnit } from '../../domain/availability';
@@ -193,6 +194,7 @@ export function BoardScreen() {
         ))}
       </div>
       <p className="muted small">{t.host.tapHint}</p>
+      <HelpLink article="board" />
     </Screen>
   );
 }

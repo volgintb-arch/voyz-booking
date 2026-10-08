@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent } from 'react';
+import { HelpLink } from '../../components/HelpLink';
 import { Icon } from '../../components/Icon';
 import type { Property } from '../../domain/types';
 import { useActions, type Result } from '../../data/actions';
@@ -35,6 +36,7 @@ export function PhotosEditor({ property, onDone }: { property: Property; onDone:
   return (
     <div className="stack">
       <p className="muted small">{t.photos.hint}</p>
+      <HelpLink article="photos" />
       <div className="photoGrid">
         {photos.map((p, i) => (
           <button

@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { Field } from '../../components/Layout';
+import { HelpLink } from '../../components/HelpLink';
 import { Icon } from '../../components/Icon';
 import type { Property } from '../../domain/types';
 import { useActions, type Result } from '../../data/actions';
@@ -59,6 +60,7 @@ export function PaymentSettings({ property, onSaved }: { property: Property; onS
   return (
     <form className="stack" onSubmit={save}>
       <p className="small">{t.payment.intro}</p>
+      <HelpLink article="qr-payment" />
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <div className="qrUpload">{qrImage ? <img src={qrImage} alt={t.payment.qr} /> : <Icon name="qr" size={48} />}</div>
         <div className="stack" style={{ flex: 1 }}>

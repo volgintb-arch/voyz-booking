@@ -260,6 +260,53 @@ describe('iCal and share links', () => {
     expect(tries.filter((t) => t.status === 201)).toHaveLength(booked.rowCount!);
   });
 
+  it('turns an OTA stripe into a booking with sum and commission for Aynes, and keeps it across syncs', async () => {
+    h = await harness({ ALLOW_DEV_LOGIN: 'true' });
+    const auth = bearer(await devToken(h));
+    const ics = (events: string[][]) => () =>
+      new Response(['BEGIN:VCALENDAR', ...events.flatMap((e) => ['BEGIN:VEVENT', ...e, 'END:VEVENT']), 'END:VCALENDAR'].join('\r\n'));
+    const event = ['UID:air-77', 'DTSTART;VALUE=DATE:20270801', 'DTEND;VALUE=DATE:20270804', 'SUMMARY:Reserved'];
+    h.respond.set('ical.example', ics([event]));
+    await api(h, 'PUT', '/api/host/properties/p-sonkul/aynes', { key: 'fsk_live_abcdef123456' }, auth);
+    type S = State & { icalChannels: { id: string }[]; blocks: { id: string; unitId: string; from: string; label: string }[]; result: { id: string } | null };
+    const ours = (b: { unitId: string; from: string }) => b.unitId === 'u-sk-5' && b.from === '2027-08-01';
+    const added = await api<S>(h, 'POST', '/api/host/units/u-sk-5/ical-channels', { platform: 'airbnb', importUrl: 'https://ical.example/air.ics' }, auth);
+    const ch = added.data.icalChannels[0]!;
+    const synced = await api<S>(h, 'POST', `/api/host/ical-channels/${ch.id}/sync`, {}, auth);
+    const stripe = synced.data.blocks.find(ours)!;
+    expect(stripe.label).toBe('Airbnb');
+
+    const tooMuch = await api(h, 'POST', `/api/host/blocks/${stripe.id}/booking`, { guestName: 'John', guests: 2, channel: 'airbnb', total: 100, commission: 200 }, auth);
+    expect(tooMuch.status).toBe(422);
+    const made = await api<S>(h, 'POST', `/api/host/blocks/${stripe.id}/booking`, {
+      guestName: 'John Smith', guests: 2, channel: 'airbnb', total: 1_350_000, commission: 202_500,
+    }, auth);
+    expect(made.status).toBe(200);
+    const id = made.data.result!.id;
+    expect(made.data.bookings.find((b) => b.id === id)).toMatchObject({ status: 'confirmed', channelCommission: 202_500 });
+    expect(made.data.blocks.some((b) => b.id === stripe.id)).toBe(false);
+    await flushOutbox(h.ctx);
+    const sent = h.calls.find((c) => c.method === 'PUT' && c.url.includes(`/bookings/voyz/${id}`));
+    expect(sent?.body).toMatchObject({ channel: 'airbnb', total: 1_350_000, channelCommission: 202_500, checkIn: '2027-08-01', checkOut: '2027-08-04' });
+
+    // Airbnb pays out the total minus its fee.
+    await api(h, 'POST', `/api/host/bookings/${id}/payments`, { kind: 'payment', method: 'ota', amount: 1_350_000, fee: 202_500, provider: 'airbnb' }, auth);
+    await flushOutbox(h.ctx);
+    const payout = h.calls.find((c) => c.method === 'PUT' && c.url.includes(`/bookings/voyz/${id}/payments/`));
+    expect(payout?.body).toMatchObject({ method: 'ota', amount: 1_350_000, fee: 202_500, provider: 'airbnb' });
+
+    // Next sync: the same event is the booking now — no stripe, no double-booking alarm.
+    const again = await api<S>(h, 'POST', `/api/host/ical-channels/${ch.id}/sync`, {}, auth);
+    expect(again.data.blocks.some(ours)).toBe(false);
+    expect(h.events.filter((e) => e.kind === 'ical')).toHaveLength(0);
+
+    // The guest cancelled on Airbnb: the event is gone, the host hears it once.
+    h.respond.set('ical.example', ics([]));
+    await api(h, 'POST', `/api/host/ical-channels/${ch.id}/sync`, {}, auth);
+    await api(h, 'POST', `/api/host/ical-channels/${ch.id}/sync`, {}, auth);
+    expect(h.events.filter((e) => e.kind === 'ical-gone')).toHaveLength(1);
+  });
+
   it('parses folded lines and date-time values', () => {
     const ev = parseIcs('BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20270801T140000Z\r\nDTEND:20270803T100000Z\r\nSUMMARY:Re\r\n served\r\nEND:VEVENT');
     expect(ev).toEqual([{ uid: 'a', start: '2027-08-01', end: '2027-08-03', summary: 'Reserved' }]);

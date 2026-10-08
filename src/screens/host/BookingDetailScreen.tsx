@@ -29,6 +29,7 @@ export function BookingDetailScreen() {
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [amount, setAmount] = useState('');
   const [provider, setProvider] = useState('');
+  const [fee, setFee] = useState('');
   const [payError, setPayError] = useState<string | null>(null);
   const [depositMethod, setDepositMethod] = useState<PaymentMethod>('qr');
 
@@ -55,10 +56,18 @@ export function BookingDetailScreen() {
     report(await actions.setStatus(booking.id, status), t.status[status]);
   };
 
+  const isOta = booking.channel === 'booking_com' || booking.channel === 'airbnb';
+  const commission = booking.channelCommission ?? 0;
+
   const openPay = () => {
     const suggested = money.paid < booking.prepaymentDue ? booking.prepaymentDue - money.paid : money.balance;
     setKind(money.paid < booking.prepaymentDue ? 'prepayment' : 'payment');
     setAmount(String(suggested / 100));
+    // A payout from Booking.com / Airbnb: the commission is kept out of it.
+    if (isOta) {
+      setMethod('ota');
+      setFee(commission && payments.length === 0 ? String(commission / 100) : '');
+    }
     setShowPay(true);
   };
 
@@ -66,7 +75,15 @@ export function BookingDetailScreen() {
     e.preventDefault();
     const minor = parseMajor(amount);
     if (!minor) return setPayError(t.detail.badAmount);
-    const r = await actions.addPayment(booking.id, { kind, method, provider: provider.trim() || null, amount: minor });
+    const feeMinor = method === 'ota' && fee.trim() ? (parseMajor(fee) ?? 0) : 0;
+    if (feeMinor > minor) return setPayError(t.ota.tooMuch);
+    const r = await actions.addPayment(booking.id, {
+      kind,
+      method,
+      provider: provider.trim() || (method === 'ota' && isOta ? booking.channel : null),
+      amount: minor,
+      fee: feeMinor,
+    });
     report(r, t.common.saved);
     if (r.ok) {
       setShowPay(false);
@@ -176,6 +193,12 @@ export function BookingDetailScreen() {
         <dl className="kv">
           <dt>{t.detail.total}</dt>
           <dd className="strong">{fmt(booking.total)}</dd>
+          {commission > 0 && (
+            <>
+              <dt>{t.ota.commission}</dt>
+              <dd>−{fmt(commission)}</dd>
+            </>
+          )}
           <dt>{t.detail.prepaymentDue}</dt>
           <dd>{fmt(booking.prepaymentDue)}</dd>
           <dt>{t.detail.paid}</dt>
@@ -198,7 +221,8 @@ export function BookingDetailScreen() {
           <div key={p.id} className="row between small">
             <span>
               {t.paymentKind[p.kind]} · {t.method[p.method]}
-              {p.provider ? ` (${p.provider})` : ''} · {fmtInstant(p.paidAt)}
+              {p.provider ? ` (${p.provider in t.channel ? t.channel[p.provider as keyof typeof t.channel] : p.provider})` : ''} · {fmtInstant(p.paidAt)}
+              {p.fee > 0 ? ` · ${t.ota.feeShort(fmt(p.fee))}` : ''}
             </span>
             <span className="strong" style={{ color: p.kind === 'refund' ? '#ff8a7a' : 'var(--lime)' }}>
               {p.kind === 'refund' ? '−' : ''}
@@ -206,6 +230,7 @@ export function BookingDetailScreen() {
             </span>
           </div>
         ))}
+        {isOta && <p className="small" style={{ opacity: 0.8 }}>{t.ota.payHint}</p>}
         {!showPay && (
           <button type="button" className="btn lime" onClick={openPay}>
             {t.detail.addPayment}
@@ -230,6 +255,11 @@ export function BookingDetailScreen() {
             <Field label={`${t.detail.amount}, ${booking.currency}`}>
               <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
             </Field>
+            {method === 'ota' && (
+              <Field label={`${t.ota.fee}, ${booking.currency}`}>
+                <input value={fee} onChange={(e) => setFee(e.target.value)} inputMode="decimal" placeholder="0" />
+              </Field>
+            )}
             {method !== 'cash' && (
               <Field label={t.detail.provider}>
                 <input value={provider} onChange={(e) => setProvider(e.target.value)} />

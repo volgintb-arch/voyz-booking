@@ -11,6 +11,7 @@ import {
   IcalBody,
   NewCategoryBody,
   NewPropertyBody,
+  OtaBookingBody,
   UnitBody,
   PaymentBody,
   PropertyPatchBody,
@@ -18,7 +19,7 @@ import {
   StatusBody,
 } from '../schemas';
 import { requireHost, type HostIdentity } from '../services/auth';
-import { addHostPayment, assertOwner, confirmDeposit, createHostBooking, extendHold, setStatus } from '../services/bookings';
+import { addHostPayment, assertOwner, bookFromIcalBlock, confirmDeposit, createHostBooking, extendHold, setStatus } from '../services/bookings';
 import {
   addCategory,
   addUnit,
@@ -114,6 +115,7 @@ export function hostRoutes(app: FastifyInstance, ctx: Ctx) {
   );
 
   app.post('/api/host/properties/:id/bookings', mutate((h, req) => createHostBooking(ctx, h.id, id(req), HostBookingBody.parse(req.body))));
+  app.post('/api/host/blocks/:id/booking', mutate((h, req) => bookFromIcalBlock(ctx, h.id, id(req), OtaBookingBody.parse(req.body))));
   app.post('/api/host/bookings/:id/status', mutate((h, req) => setStatus(ctx, h.id, id(req), StatusBody.parse(req.body).status)));
   app.post('/api/host/bookings/:id/payments', mutate((h, req) => addHostPayment(ctx, h.id, id(req), PaymentBody.parse(req.body))));
   app.post('/api/host/bookings/:id/deposit-received', mutate((h, req) => confirmDeposit(ctx, h.id, id(req), DepositBody.parse(req.body).method)));

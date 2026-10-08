@@ -18,6 +18,8 @@ export interface Notifier {
   guestCancelled(ownerId: string, booking: Booking): Promise<void>;
   holdExpired(ownerId: string, booking: Booking): Promise<void>;
   icalConflict(ownerId: string, text: string): Promise<void>;
+  /** A booking made from an OTA event whose event has left the OTA calendar. */
+  icalGone(ownerId: string, text: string): Promise<void>;
   /** The guest's own chat, if they asked to follow the booking in Telegram. */
   guestUpdate(bookingId: string, event: GuestEvent): Promise<void>;
 }
@@ -28,6 +30,7 @@ export const silentNotifier: Notifier = {
   guestCancelled: async () => {},
   holdExpired: async () => {},
   icalConflict: async () => {},
+  icalGone: async () => {},
   guestUpdate: async () => {},
 };
 
@@ -181,6 +184,12 @@ export class TelegramNotifier implements Notifier {
     const h = await this.chat(ownerId);
     if (!h) return;
     await this.api.send(h.telegram_id!, `⚠️ ${botCopy(h.lang).icalConflict}\n${text}`);
+  }
+
+  async icalGone(ownerId: string, text: string) {
+    const h = await this.chat(ownerId);
+    if (!h) return;
+    await this.api.send(h.telegram_id!, `❓ ${botCopy(h.lang).icalGone}\n${text}`);
   }
 
   /** "✅ Хозяин подтвердил бронь\n«Сон-Куль Айыл» · Стандартная юрта\n14 июл. — 17 июл. · 3 ноч. · 2 гост.\nБронь VZ-2027-1001…" */

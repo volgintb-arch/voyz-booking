@@ -85,6 +85,7 @@ export async function harness(env: Partial<Record<string, string>> = {}, opts: {
     guestCancelled: record('cancelled'),
     holdExpired: record('expired'),
     icalConflict: record('ical'),
+    icalGone: record('ical-gone'),
     guestUpdate: async (id, event) => {
       events.push({ kind: `guest:${event}`, ownerId: '', id });
     },

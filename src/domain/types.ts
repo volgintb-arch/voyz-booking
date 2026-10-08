@@ -152,6 +152,7 @@ export interface Booking {
   source: LinkSource | null;
   holdUntil: string | null; // deposit deadline; the unit is released after it
   guestReportedPaidAt: string | null; // guest pressed "I have paid"
+  channelCommission?: number; // Booking.com / Airbnb commission on this booking, minor units
 }
 
 export type PaymentKind = 'prepayment' | 'payment' | 'refund';

@@ -192,6 +192,9 @@ export interface BookingRow {
   guest_lang: Lang;
   guest_link_code: string | null;
   guest_token_enc: string | null;
+  channel_commission: number;
+  ical_channel_id: string | null;
+  ical_uid: string | null;
 }
 
 export const toBooking = (r: BookingRow): Booking => ({
@@ -220,6 +223,7 @@ export const toBooking = (r: BookingRow): Booking => ({
   source: r.source,
   holdUntil: r.hold_until,
   guestReportedPaidAt: r.guest_reported_paid_at,
+  channelCommission: r.channel_commission,
 });
 
 export interface PaymentRow {

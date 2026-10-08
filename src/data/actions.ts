@@ -82,6 +82,16 @@ export interface HostBookingInput {
   note: string;
 }
 
+export interface OtaBookingInput {
+  guestName: string;
+  guestPhone: string;
+  guests: number;
+  channel: Channel;
+  total: number;
+  commission: number;
+  note: string;
+}
+
 export function useActions() {
   const { state, update, replace } = useStore();
 
@@ -236,12 +246,51 @@ export function useActions() {
           ? host('POST', `api/host/bookings/${bookingId}/status`, { status })
           : Promise.resolve(local((s) => updateBooking(s, bookingId, status === 'cancelled' ? { status, cancelReason: 'host' } : { status }, now()))),
 
-      addPayment: (bookingId: string, p: { kind: PaymentKind; method: PaymentMethod; amount: number; provider: string | null }) => {
+      addPayment: (bookingId: string, p: { kind: PaymentKind; method: PaymentMethod; amount: number; fee?: number; provider: string | null }) => {
         if (apiMode) return host('POST', `api/host/bookings/${bookingId}/payments`, p);
         const booking = state.bookings.find((b) => b.id === bookingId);
         return Promise.resolve(
-          local((s) => addPayment(s, { bookingId, ...p, fee: 0, currency: booking?.currency ?? 'KGS', paidAt: now(), status: 'succeeded' })),
+          local((s) => addPayment(s, { bookingId, ...p, fee: p.fee ?? 0, currency: booking?.currency ?? 'KGS', paidAt: now(), status: 'succeeded' })),
         );
+      },
+
+      /** Booking.com / Airbnb stripe → booking with the sum and the commission (goes to Aynes). */
+      async bookFromBlock(blockId: string, input: OtaBookingInput): Promise<Result<{ id: string }>> {
+        if (apiMode) {
+          const r = await host<{ id: string }>('POST', `api/host/blocks/${blockId}/booking`, input);
+          return r.ok ? done({ id: r.value.id }) : r;
+        }
+        const block = state.blocks.find((b) => b.id === blockId);
+        const unit = state.units.find((u) => u.id === block?.unitId);
+        const property = state.properties.find((p) => p.id === unit?.propertyId);
+        if (!block || !unit || !property) return { ok: false, code: 'not_found' };
+        const r = createBooking(
+          removeBlock(state, blockId),
+          {
+            propertyId: property.id,
+            unitId: unit.id,
+            categoryId: unit.categoryId,
+            checkIn: block.from,
+            checkOut: block.to,
+            guests: input.guests,
+            guestName: input.guestName,
+            guestPhone: input.guestPhone,
+            channel: input.channel,
+            status: 'confirmed',
+            currency: property.currency,
+            total: input.total,
+            prepaymentDue: 0,
+            nonRefundablePrepayment: false,
+            note: input.note,
+            createdBy: 'host',
+            source: null,
+            channelCommission: input.commission,
+          },
+          now(),
+        );
+        if (!r.ok) return { ok: false, code: 'dates_taken', conflicts: r.conflicts };
+        update(() => r.state);
+        return done({ id: r.booking.id });
       },
 
       confirmDeposit: (bookingId: string, method: PaymentMethod) =>

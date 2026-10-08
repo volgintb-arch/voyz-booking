@@ -35,12 +35,23 @@ export const HostBookingBody = z.object({
   note: z.string().max(500).default(''),
 });
 
+export const OtaBookingBody = z.object({
+  guestName: Name,
+  guestPhone: z.string().trim().max(30).default(''),
+  guests: z.number().int().min(1).max(30),
+  channel: Channel,
+  total: Money.refine((v) => v > 0, 'Total must be positive'),
+  commission: Money.default(0),
+  note: z.string().max(500).default(''),
+});
+
 export const StatusBody = z.object({ status: z.enum(['pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled', 'no_show']) });
 
 export const PaymentBody = z.object({
   kind: z.enum(['prepayment', 'payment', 'refund']),
   method: PaymentMethod,
   amount: Money.refine((v) => v > 0, 'Amount must be positive'),
+  fee: Money.default(0),
   provider: z.string().trim().max(40).nullable().default(null),
 });
 

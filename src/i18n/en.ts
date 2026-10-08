@@ -178,7 +178,7 @@ export const en: Dict = {
     property: 'Property',
     today: 'Today',
     days: (n) => s(n, 'day', 'days'),
-    tapHint: 'Tap a free cell to add a booking from WhatsApp or a call',
+    tapHint: 'Tap a free cell to add a booking from WhatsApp or a call. A blue stripe is a Booking.com or Airbnb booking: tap it to add the sum, and it goes to Aynes.',
     legend: {
       paid: 'Deposit paid',
       confirmed: 'No deposit yet',
@@ -241,6 +241,26 @@ export const en: Dict = {
     conflict: 'Already taken on these dates:',
     conflictBlock: 'closed',
     hint: 'The booking is saved on the phone even without network',
+  },
+  ota: {
+    title: 'Booking from a site',
+    intro: (site: string) =>
+      `${site} sends only the dates in its calendar. Open this booking in the ${site} extranet and copy the guest, the sum and the commission here — the booking appears in Voyz and goes to Aynes.`,
+    total: 'Booking total (what the guest pays)',
+    totalHint: 'The full price of the stay, as in the site’s extranet',
+    commission: 'Site commission',
+    commissionHint: 'Booking.com — the commission from the reservation in the extranet. Airbnb — the host service fee. Not sure? Leave 0 and add it later with the payout.',
+    youGet: (x: string) => `You keep: ${x}`,
+    channel: 'Site',
+    phoneHint: 'If the site shows it',
+    submit: 'Create booking',
+    done: 'Booking created and sent to Aynes',
+    gone: 'This stripe has been refreshed — open the board again',
+    tooMuch: 'The commission is larger than the total',
+    payHint:
+      'When the site pays you out, add a payment “Through the site”: amount — what the guest paid, kept — the commission. In Aynes the payment waits for a bank statement line.',
+    fee: 'Kept by the site',
+    feeShort: (x: string) => `kept ${x}`,
   },
   promo: {
     title: 'Promotion',

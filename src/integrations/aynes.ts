@@ -64,7 +64,7 @@ export function toAynesBooking(
     ...(shareGuestName && booking.guestName ? { guestName: booking.guestName } : {}),
     currency: booking.currency,
     total: booking.total,
-    channelCommission: 0,
+    channelCommission: booking.channelCommission ?? 0,
     nonRefundablePrepayment: booking.nonRefundablePrepayment,
     updatedAt: booking.updatedAt,
     ...(booking.cancelledAt ? { cancelledAt: booking.cancelledAt } : {}),

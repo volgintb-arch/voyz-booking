@@ -12,7 +12,7 @@ import type { Ctx } from '../context';
 import { encrypt, randomToken, sha256 } from '../crypto';
 import { many, one, tx, type Queryable, type Tx } from '../db';
 import { ApiError, notFound } from '../http';
-import { loadBundle, toBooking, toPayment, type BookingRow, type PaymentRow, type PropertyRow } from '../model';
+import { loadBundle, toBooking, toPayment, type BlockRow, type BookingRow, type PaymentRow, type PropertyRow } from '../model';
 import { enqueueBooking, enqueuePayment } from './outbox';
 
 const EXCLUSION_VIOLATION = '23P01';
@@ -28,13 +28,13 @@ async function insertBooking(c: Tx, b: Booking, guestTokenHash: string | null): 
       c,
       `insert into bookings (id, version, property_id, unit_id, category_id, check_in, check_out, guests, guest_name, guest_phone,
          channel, status, currency, total, prepayment_due, non_refundable_prepayment, note, created_at, updated_at, created_by,
-         source, hold_until, guest_token_hash)
-       values ($1,1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$17,$18,$19,$20,$21)
+         source, hold_until, guest_token_hash, channel_commission)
+       values ($1,1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$17,$18,$19,$20,$21,$22)
        returning *`,
       [
         b.id, b.propertyId, b.unitId, b.categoryId, b.checkIn, b.checkOut, b.guests, b.guestName, b.guestPhone,
         b.channel, b.status, b.currency, b.total, b.prepaymentDue, b.nonRefundablePrepayment, b.note, b.createdAt, b.createdBy,
-        b.source, b.holdUntil, guestTokenHash,
+        b.source, b.holdUntil, guestTokenHash, b.channelCommission ?? 0,
       ],
     );
     return toBooking(row!);
@@ -181,6 +181,78 @@ export async function createHostBooking(ctx: Ctx, hostId: string, propertyId: st
   });
 }
 
+export interface OtaBookingInput {
+  guestName: string;
+  guestPhone: string;
+  guests: number;
+  channel: Channel;
+  total: number;
+  commission: number;
+  note: string;
+}
+
+/**
+ * "Оформить бронь" on a Booking.com / Airbnb stripe: iCal gave only the dates, the
+ * host adds the guest, the sum and the commission from the OTA extranet. The block
+ * becomes a confirmed booking (and goes to Aynes); the event UID keeps the next
+ * sync from blocking the same dates again.
+ */
+export async function bookFromIcalBlock(ctx: Ctx, hostId: string, blockId: string, input: OtaBookingInput): Promise<Booking> {
+  return tx(ctx.db, async (c) => {
+    const bl = await one<BlockRow & { property_id: string; ical_channel_id: string | null; ical_uid: string | null }>(
+      c,
+      'select b.*, u.property_id from blocks b join units u on u.id = b.unit_id where b.id = $1',
+      [blockId],
+    );
+    if (!bl || bl.reason !== 'ical') notFound('Block not found');
+    await assertOwner(c, hostId, bl.property_id);
+    await lockProperty(c, bl.property_id);
+    if (input.commission > input.total) throw new ApiError('bad_request', 'Commission is larger than the total');
+    await c.query('delete from blocks where id = $1', [blockId]);
+    const bundle = (await loadBundle(c, { id: bl.property_id }, bl.date_from))!;
+    const unit = bundle.units.find((u) => u.id === bl.unit_id)!;
+    const conflicts = conflictsFor(unit.id, bl.date_from, bl.date_to, bundle.bookings, bundle.blocks);
+    if (conflicts.length > 0) throw new ApiError('dates_taken', 'Unit is taken on these dates', { conflicts });
+    const now = ctx.now().toISOString();
+    const booking = await insertBooking(
+      c,
+      {
+        id: await nextBookingId(c, bl.date_from),
+        version: 1,
+        propertyId: bl.property_id,
+        unitId: unit.id,
+        categoryId: unit.categoryId,
+        checkIn: bl.date_from,
+        checkOut: bl.date_to,
+        guests: input.guests,
+        guestName: input.guestName,
+        guestPhone: input.guestPhone,
+        channel: input.channel,
+        // The OTA already confirmed it and handles the guest's prepayment.
+        status: 'confirmed',
+        currency: bundle.property.currency,
+        total: input.total,
+        prepaymentDue: 0,
+        nonRefundablePrepayment: false,
+        note: input.note,
+        createdAt: now,
+        updatedAt: now,
+        cancelledAt: null,
+        cancelReason: null,
+        createdBy: 'host',
+        source: null,
+        holdUntil: null,
+        guestReportedPaidAt: null,
+        channelCommission: input.commission,
+      },
+      null,
+    );
+    await c.query('update bookings set ical_channel_id = $2, ical_uid = $3 where id = $1', [booking.id, bl.ical_channel_id, bl.ical_uid]);
+    await enqueueBooking(c, booking);
+    return booking;
+  });
+}
+
 export async function assertOwner(q: Queryable, hostId: string, propertyId: string): Promise<PropertyRow> {
   const p = await one<PropertyRow>(q, 'select * from properties where id = $1', [propertyId]);
   if (!p || p.owner_id !== hostId) notFound('Property not found');
@@ -248,10 +320,13 @@ export interface PaymentInput {
   kind: PaymentKind;
   method: PaymentMethod;
   amount: number;
+  /** Kept by the OTA or the acquirer out of this payment (Airbnb payout, card fee). */
+  fee?: number;
   provider: string | null;
 }
 
 export async function addHostPayment(ctx: Ctx, hostId: string, bookingId: string, input: PaymentInput): Promise<Payment> {
+  if ((input.fee ?? 0) > input.amount) throw new ApiError('bad_request', 'Fee is larger than the payment');
   return tx(ctx.db, async (c) => {
     const { booking } = await ownedBooking(c, hostId, bookingId);
     return insertPayment(
@@ -262,7 +337,7 @@ export async function addHostPayment(ctx: Ctx, hostId: string, bookingId: string
         method: input.method,
         provider: input.provider,
         amount: input.amount,
-        fee: 0,
+        fee: input.fee ?? 0,
         currency: booking.currency,
         paidAt: ctx.now().toISOString(),
         status: 'succeeded',

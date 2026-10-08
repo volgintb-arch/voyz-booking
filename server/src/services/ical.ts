@@ -119,12 +119,20 @@ export async function syncChannel(ctx: Ctx, channelId: string): Promise<SyncResu
   const future = events.filter((e) => e.end > today && !e.uid.includes('@voyz-'));
   const label = ch.platform === 'booking_com' ? 'Booking.com' : ch.platform === 'airbnb' ? 'Airbnb' : 'iCal';
 
-  const conflicts = await tx(ctx.db, async (c) => {
+  const { conflicts, gone } = await tx(ctx.db, async (c) => {
+    // Bookings the host already made from this channel's events (with sum and commission).
+    const linked = await many<BookingRow>(
+      c,
+      `select * from bookings where ical_channel_id = $1 and status not in ('cancelled', 'no_show')`,
+      [channelId],
+    );
+    const isBooked = (e: IcsEvent) => linked.some((b) => b.ical_uid === e.uid && b.check_in === e.start && b.check_out === e.end);
     await c.query('delete from blocks where ical_channel_id = $1', [channelId]);
     for (const e of future) {
+      if (isBooked(e)) continue;
       await c.query(
-        `insert into blocks (id, unit_id, date_from, date_to, reason, label, ical_channel_id) values ($1,$2,$3,$4,'ical',$5,$6)`,
-        [newId('bl'), ch.unit_id, e.start, e.end, label, channelId],
+        `insert into blocks (id, unit_id, date_from, date_to, reason, label, ical_channel_id, ical_uid) values ($1,$2,$3,$4,'ical',$5,$6,$7)`,
+        [newId('bl'), ch.unit_id, e.start, e.end, label, channelId, e.uid],
       );
     }
     await c.query('update ical_channels set last_sync_at = $2, last_error = null where id = $1', [channelId, ctx.now().toISOString()]);
@@ -133,11 +141,20 @@ export async function syncChannel(ctx: Ctx, channelId: string): Promise<SyncResu
       `select * from bookings where unit_id = $1 and check_out > $2 and status in ('pending','confirmed','checked_in')`,
       [ch.unit_id, today],
     );
-    return ours
-      .filter((b) => future.some((e) => rangesOverlap(e.start, e.end, b.check_in, b.check_out)))
+    const overlapping = ours
+      .filter((b) => future.some((e) => !(b.ical_channel_id === channelId && b.ical_uid === e.uid) && rangesOverlap(e.start, e.end, b.check_in, b.check_out)))
       .map((b) => `${ch.unit_name}: ${b.id} ${b.guest_name} ${b.check_in} — ${b.check_out} ↔ ${label}`);
+    // The OTA calendar no longer has the event: most likely the guest cancelled there.
+    const missing: string[] = [];
+    for (const b of linked) {
+      if (b.check_out <= today || b.status === 'checked_in' || events.some((e) => e.uid === b.ical_uid)) continue;
+      const fresh = await c.query('insert into notification_log(key) values ($1) on conflict do nothing', [`ical-gone:${b.id}`]);
+      if (fresh.rowCount) missing.push(`${ch.unit_name}: ${b.id} ${b.guest_name} ${b.check_in} — ${b.check_out} · ${label}`);
+    }
+    return { conflicts: overlapping, gone: missing };
   });
   if (conflicts.length) await ctx.notify.icalConflict(ch.owner_id, conflicts.join('\n'));
+  if (gone.length) await ctx.notify.icalGone(ch.owner_id, gone.join('\n'));
   return { imported: future.length, conflicts, error: null };
 }
 

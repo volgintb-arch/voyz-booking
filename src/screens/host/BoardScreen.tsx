@@ -154,7 +154,11 @@ export function BoardScreen() {
                                 <button
                                   type="button"
                                   className={`bar ${bar.tone}`}
-                                  onClick={() => bar.bookingId && navigate(`/host/b/${bar.bookingId}`)}
+                                  onClick={() => {
+                                    if (bar.bookingId) navigate(`/host/b/${bar.bookingId}`);
+                                    // Booking.com / Airbnb stripe: add the guest and the money.
+                                    else if (bar.tone === 'ical') navigate(`/host/ota/${bar.key}`);
+                                  }}
                                   title={bar.label}
                                 >
                                   {bar.label}

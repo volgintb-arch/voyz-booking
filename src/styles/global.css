@@ -425,3 +425,11 @@ code { font-size: 13px; }
   padding: 10px 10px 10px 20px; border-radius: var(--pill); background: var(--soft); font-size: 15px;
 }
 .accountStrip b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Illustrations must not fill a whole monitor: cap the height, keep the phone look. */
+.hero .cover { max-height: 52vh; }
+@media (min-width: 760px) {
+  .hero .cover { aspect-ratio: 16 / 7; }
+  .hero .wordmark { font-size: 56px; bottom: 18px; }
+  .tile .photo .cover { aspect-ratio: 16 / 7; }
+}

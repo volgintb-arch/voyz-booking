@@ -79,9 +79,11 @@ export function visitSource(): LinkSource {
   return isLinkSource(src) ? src : 'direct';
 }
 
+// globalThis, not window: the server type-checks this file too (no DOM there).
 function inFrame(): boolean {
   try {
-    return window.self !== window.top;
+    const g = globalThis as { self?: unknown; top?: unknown };
+    return g.self !== g.top;
   } catch {
     return true; // a cross-origin parent: we are inside someone's site
   }

@@ -41,7 +41,6 @@ export function sharePages(publicUrl: string): Plugin {
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta http-equiv="refresh" content="0;url=${target}">
 <script>location.replace(${JSON.stringify(target)} + location.search);</script>
 </head>
 <body style="font-family:system-ui;padding:24px"><a href="${target}">${esc(p.name.ru)}</a></body>

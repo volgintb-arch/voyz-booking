@@ -10,7 +10,11 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').repl
 export function shareRoutes(app: FastifyInstance, ctx: Ctx) {
   app.get('/health', async () => ({ ok: true }));
 
-  /** Short link with a preview card for messengers, then straight into the app. */
+  /**
+   * Short link with a preview card for messengers, then straight into the app.
+   * The redirect is script-only: link crawlers that follow <meta refresh>
+   * (Instagram/Facebook, WhatsApp) would otherwise read the app page, not this card.
+   */
   app.get('/s/:slug', async (req, reply) => {
     const { slug } = req.params as { slug: string };
     const p = await one<PropertyRow & { min_price: number | null }>(
@@ -37,7 +41,7 @@ export function shareRoutes(app: FastifyInstance, ctx: Ctx) {
 <meta property="og:url" content="${esc(`${ctx.config.API_URL}s/${slug}`)}"><meta property="og:image" content="${esc(image)}">
 <meta property="og:image:width" content="${cover?.width ?? 1200}"><meta property="og:image:height" content="${cover?.height ?? 630}">
 <meta name="twitter:card" content="summary_large_image">
-<meta http-equiv="refresh" content="0;url=${esc(target)}">
+<meta property="og:locale" content="ru_RU">
 </head><body style="font-family:system-ui;padding:24px"><a href="${esc(target)}">${esc(p.name.ru)}</a>
 <script>location.replace(${JSON.stringify(target)})</script></body></html>`;
   });

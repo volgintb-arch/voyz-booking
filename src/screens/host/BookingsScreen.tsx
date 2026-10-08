@@ -61,7 +61,10 @@ export function BookingsScreen() {
           <Link key={b.id} to={`/host/b/${b.id}`} className="card accent" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="row between">
               <span className="strong" style={{ fontSize: 19 }}>{b.guestName}</span>
-              <StatusBadge status={b.status} />
+              <span className="row" style={{ gap: 6 }}>
+                {b.status === 'pending' && b.guestReportedPaidAt && <span className="badge confirmed">{t.deposit.paidTag}</span>}
+                <StatusBadge status={b.status} />
+              </span>
             </div>
             <div className="row between muted small">
               <span>

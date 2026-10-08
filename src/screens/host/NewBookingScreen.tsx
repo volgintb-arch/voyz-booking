@@ -79,6 +79,7 @@ export function NewBookingScreen() {
         nonRefundablePrepayment: property.cancellation.nonRefundable,
         note: note.trim(),
         createdBy: 'host',
+        source: null,
       },
       nowWithOffset(property.timezone),
     );

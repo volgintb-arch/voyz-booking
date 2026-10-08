@@ -8,13 +8,14 @@ import { bookingMoney } from '../../domain/ledger';
 import { formatMoney, parseMajor } from '../../domain/money';
 import type { BookingStatus, PaymentKind, PaymentMethod } from '../../domain/types';
 import { bookingPath } from '../../integrations/aynes';
-import { addPayment, NEXT_STATUSES, updateBooking } from '../../data/state';
+import { addPayment, confirmDepositReceived, extendHold, NEXT_STATUSES, updateBooking } from '../../data/state';
 import { useStore } from '../../data/store';
 import { useT } from '../../i18n';
 import { hostTabs } from './tabs';
 
 const KINDS: PaymentKind[] = ['prepayment', 'payment', 'refund'];
 const METHODS: PaymentMethod[] = ['cash', 'qr', 'card', 'transfer', 'ota'];
+const DEPOSIT_METHODS: PaymentMethod[] = ['qr', 'transfer', 'card', 'cash'];
 
 export function BookingDetailScreen() {
   const { id } = useParams();
@@ -27,6 +28,7 @@ export function BookingDetailScreen() {
   const [amount, setAmount] = useState('');
   const [provider, setProvider] = useState('');
   const [payError, setPayError] = useState<string | null>(null);
+  const [depositMethod, setDepositMethod] = useState<PaymentMethod>('qr');
 
   const booking = state.bookings.find((b) => b.id === id);
   const property = state.properties.find((p) => p.id === booking?.propertyId);
@@ -47,7 +49,7 @@ export function BookingDetailScreen() {
 
   const setStatus = (status: BookingStatus) => {
     if (status === 'cancelled' && !window.confirm(t.detail.confirmCancel)) return;
-    update((s) => updateBooking(s, booking.id, { status }, now()));
+    update((s) => updateBooking(s, booking.id, status === 'cancelled' ? { status, cancelReason: 'host' } : { status }, now()));
     toast.show(t.status[status]);
   };
 
@@ -113,7 +115,10 @@ export function BookingDetailScreen() {
             )}
           </dd>
           <dt>{t.detail.channel}</dt>
-          <dd>{t.channel[booking.channel]}</dd>
+          <dd>
+            {t.channel[booking.channel]}
+            {booking.source && booking.source !== 'direct' ? ` · ${t.promo.viaLink(t.promo.source[booking.source])}` : ''}
+          </dd>
           {booking.note && (
             <>
               <dt>{t.detail.note}</dt>
@@ -125,6 +130,47 @@ export function BookingDetailScreen() {
           {aynesLabel} · {t.detail.version(booking.version)}
         </p>
       </div>
+
+      {booking.status === 'cancelled' && booking.cancelReason === 'hold_expired' && (
+        <p className="banner">{t.deposit.expired}</p>
+      )}
+
+      {booking.status === 'pending' && money.paid < booking.prepaymentDue && (
+        <div className={`card ${booking.guestReportedPaidAt ? 'accent' : ''}`}>
+          <span className="section-title">{t.deposit.title}</span>
+          <p className="price">{fmt(booking.prepaymentDue - money.paid)}</p>
+          {booking.holdUntil && <p className="small">{t.deposit.until(fmtInstant(booking.holdUntil))}</p>}
+          {booking.guestReportedPaidAt ? (
+            <p className="banner info">{t.deposit.reported(fmtInstant(booking.guestReportedPaidAt))}</p>
+          ) : (
+            <p className="muted small">{t.deposit.waiting}</p>
+          )}
+          <div className="chips">
+            {DEPOSIT_METHODS.map((m) => (
+              <button key={m} type="button" className="chip" aria-pressed={depositMethod === m} onClick={() => setDepositMethod(m)}>
+                {t.method[m]}
+              </button>
+            ))}
+          </div>
+          <div className="actions">
+            <button
+              type="button"
+              className="btn lime"
+              onClick={() => {
+                update((s) => confirmDepositReceived(s, booking.id, depositMethod, null, now()));
+                toast.show(t.deposit.received);
+              }}
+            >
+              {t.deposit.receivedBtn}
+            </button>
+            {booking.holdUntil && (
+              <button type="button" className="btn outline" onClick={() => update((s) => extendHold(s, booking.id, 12))}>
+                {t.deposit.extend(12)}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {NEXT_STATUSES[booking.status].length > 0 && (
         <div className="actions">

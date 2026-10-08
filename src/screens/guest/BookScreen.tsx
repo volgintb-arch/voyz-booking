@@ -5,13 +5,11 @@ import { freeUnits } from '../../domain/availability';
 import { nowWithOffset } from '../../domain/dates';
 import { formatMoney } from '../../domain/money';
 import { quoteStay, validateStay } from '../../domain/pricing';
-import type { PaymentMethod } from '../../domain/types';
 import { createBooking } from '../../data/state';
 import { useStore } from '../../data/store';
 import { useT } from '../../i18n';
+import { channelFor, visitSource } from '../../share/links';
 import { useStayParams } from './params';
-
-const ONLINE_METHODS: PaymentMethod[] = ['qr', 'card', 'transfer'];
 
 export function BookScreen() {
   const { slug, categoryId } = useParams();
@@ -26,8 +24,6 @@ export function BookScreen() {
 
   const property = state.properties.find((p) => p.slug === slug);
   const category = state.categories.find((c) => c.id === categoryId && c.propertyId === property?.id);
-  const methods = property?.paymentMethods.filter((m) => ONLINE_METHODS.includes(m)) ?? [];
-  const [method, setMethod] = useState<PaymentMethod>(methods[0] ?? 'qr');
 
   if (!property || !category) {
     return (
@@ -61,7 +57,7 @@ export function BookScreen() {
         guests: stay.guests,
         guestName: name.trim(),
         guestPhone: phone.trim(),
-        channel: 'voyz',
+        channel: channelFor(visitSource()),
         status: 'pending',
         currency: property.currency,
         total: quote.total,
@@ -69,12 +65,13 @@ export function BookScreen() {
         nonRefundablePrepayment: policy.nonRefundable,
         note: '',
         createdBy: 'guest',
+        source: visitSource(),
       },
       nowWithOffset(property.timezone),
     );
     if (!result.ok) return setError(t.book.taken);
     update(() => result.state);
-    navigate(needsPrepayment ? `/guest/pay/${result.booking.id}?m=${method}` : `/guest/done/${result.booking.id}`, { replace: true });
+    navigate(needsPrepayment ? `/guest/pay/${result.booking.id}` : `/guest/done/${result.booking.id}`, { replace: true });
   };
 
   return (
@@ -120,15 +117,9 @@ export function BookScreen() {
           <span className="section-title">{t.book.payment}</span>
           {needsPrepayment ? (
             <>
-              <div className="chips">
-                {methods.map((m) => (
-                  <button key={m} type="button" className="chip" aria-pressed={method === m} onClick={() => setMethod(m)}>
-                    {t.method[m]}
-                  </button>
-                ))}
-              </div>
               <p className="price">{t.book.prepayNow(money(quote.prepaymentDue))}</p>
               <p className="muted">{t.book.rest(money(quote.total - quote.prepaymentDue))}</p>
+              <p className="small">{t.book.holdNote(property.payment.holdHours)}</p>
               <p className="muted small">
                 {policy.nonRefundable ? t.property.nonRefundable : t.property.freeCancel(policy.freeCancelDays)}
               </p>

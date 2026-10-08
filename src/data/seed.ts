@@ -50,6 +50,7 @@ const properties: Property[] = [
     paymentMethods: ['qr', 'transfer', 'cash'],
     amenities: ['breakfast', 'horse', 'shower', 'parking'],
     hue: 165,
+    payment: { qrImage: null, recipient: 'Бакыт Т.', details: 'MBANK · +996 700 123 456', holdHours: 24 },
   },
   {
     id: 'p-karakol',
@@ -73,6 +74,7 @@ const properties: Property[] = [
     paymentMethods: ['qr', 'card', 'cash'],
     amenities: ['wifi', 'breakfast', 'sauna', 'heating', 'parking'],
     hue: 28,
+    payment: { qrImage: null, recipient: 'Айнура К.', details: 'Optima · карта 4169 •••• 2231', holdHours: 12 },
   },
   {
     id: 'p-bosteri',
@@ -96,6 +98,7 @@ const properties: Property[] = [
     paymentMethods: ['qr', 'card'],
     amenities: ['beach', 'wifi', 'breakfast', 'parking'],
     hue: 205,
+    payment: { qrImage: null, recipient: 'Bosteri Beach LLC', details: 'MBANK · +996 555 900 100', holdHours: 6 },
   },
   {
     id: 'p-tashrabat',
@@ -119,6 +122,7 @@ const properties: Property[] = [
     paymentMethods: ['cash'],
     amenities: ['breakfast', 'horse', 'heating'],
     hue: 95,
+    payment: { qrImage: null, recipient: 'Мирбек А.', details: 'О!Деньги · +996 709 44 55 66', holdHours: 48 },
   },
 ];
 
@@ -187,7 +191,11 @@ export function buildSeed(now: Date = new Date()): SeedData {
     createdAt: stamp,
     updatedAt: stamp,
     cancelledAt: null,
+    cancelReason: null,
     createdBy: channel === 'voyz' ? 'guest' : 'host',
+    source: channel === 'voyz' ? 'instagram' : null,
+    holdUntil: null,
+    guestReportedPaidAt: null,
   });
 
   const bookings: Booking[] = [
@@ -200,6 +208,11 @@ export function buildSeed(now: Date = new Date()): SeedData {
     booking(7, 'u-kh-4', 'c-kh-fam', 'p-karakol', 3, 3, 'Бакыт', 1200000, 'pending', 'voyz', 240000),
     booking(8, 'u-kh-2', 'c-kh-dbl', 'p-karakol', 6, 2, 'Азамат', 500000, 'confirmed', 'phone', 100000),
   ];
+
+  // Unpaid guest bookings wait for the deposit; one guest says they have paid.
+  const hours = (h: number) => new Date(now.getTime() + h * 3_600_000).toISOString();
+  bookings[2] = { ...bookings[2]!, holdUntil: hours(20) };
+  bookings[6] = { ...bookings[6]!, holdUntil: hours(5), guestReportedPaidAt: hours(-1), source: 'whatsapp' };
 
   const payment = (id: string, bookingId: string, amount: number, method: Payment['method'], provider: string | null): Payment => ({
     id,

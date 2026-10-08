@@ -24,7 +24,7 @@ export interface AynesSettings {
 }
 
 export interface AppState extends SeedData {
-  schema: 1;
+  schema: 2;
   lang: Lang;
   hostId: string;
   guestBookingIds: string[]; // bookings made by the guest on this device
@@ -35,7 +35,7 @@ export interface AppState extends SeedData {
 
 export function initialState(now: Date = new Date()): AppState {
   return {
-    schema: 1,
+    schema: 2,
     ...buildSeed(now),
     lang: 'ru',
     hostId: DEMO_HOST_ID,
@@ -55,7 +55,14 @@ function queueBooking(state: AppState, booking: Booking, now: string): OutboxIte
   return enqueue(state.outbox, bookingPath(booking.id), body, now);
 }
 
-export type NewBooking = Omit<Booking, 'id' | 'version' | 'createdAt' | 'updatedAt' | 'cancelledAt'>;
+export type NewBooking = Omit<
+  Booking,
+  'id' | 'version' | 'createdAt' | 'updatedAt' | 'cancelledAt' | 'cancelReason' | 'holdUntil' | 'guestReportedPaidAt'
+>;
+
+function plusHours(iso: string, hours: number): string {
+  return new Date(Date.parse(iso) + hours * 3_600_000).toISOString();
+}
 
 export type CreateResult =
   | { ok: true; state: AppState; booking: Booking }
@@ -65,6 +72,9 @@ export function createBooking(state: AppState, input: NewBooking, now: string): 
   const conflicts = conflictsFor(input.unitId, input.checkIn, input.checkOut, state.bookings, state.blocks);
   if (conflicts.length > 0) return { ok: false, conflicts };
   const seq = state.seq + 1;
+  const property = state.properties.find((p) => p.id === input.propertyId);
+  // A guest booking with a deposit holds the unit only until the deadline (D-001).
+  const needsHold = input.createdBy === 'guest' && input.status === 'pending' && input.prepaymentDue > 0;
   const booking: Booking = {
     ...input,
     id: `VZ-${input.checkIn.slice(0, 4)}-${String(seq).padStart(4, '0')}`,
@@ -72,6 +82,9 @@ export function createBooking(state: AppState, input: NewBooking, now: string): 
     createdAt: now,
     updatedAt: now,
     cancelledAt: null,
+    cancelReason: null,
+    holdUntil: needsHold ? plusHours(now, property?.payment.holdHours ?? 24) : null,
+    guestReportedPaidAt: null,
   };
   const next: AppState = {
     ...state,
@@ -85,7 +98,7 @@ export function createBooking(state: AppState, input: NewBooking, now: string): 
 export function updateBooking(
   state: AppState,
   id: string,
-  patch: Partial<Pick<Booking, 'status' | 'note' | 'guests' | 'total'>>,
+  patch: Partial<Pick<Booking, 'status' | 'note' | 'guests' | 'total' | 'cancelReason'>>,
   now: string,
 ): AppState {
   const current = state.bookings.find((b) => b.id === id);
@@ -97,6 +110,8 @@ export function updateBooking(
     version: current.version + 1,
     updatedAt: now,
     cancelledAt: cancelling ? now : current.cancelledAt,
+    // Confirming means the host accepts the booking: no automatic release any more.
+    holdUntil: patch.status && patch.status !== 'pending' ? null : current.holdUntil,
   };
   const next = { ...state, bookings: state.bookings.map((b) => (b.id === id ? updated : b)) };
   return { ...next, outbox: queueBooking(next, updated, now) };
@@ -169,4 +184,64 @@ export function markOutbox(state: AppState, id: string, result: { ok: true } | {
         : o,
     ),
   };
+}
+
+/** Guest pressed "I have paid": the host still has to see the money. */
+export function reportPaid(state: AppState, id: string, now: string): AppState {
+  return {
+    ...state,
+    bookings: state.bookings.map((b) => (b.id === id ? { ...b, guestReportedPaidAt: now } : b)),
+  };
+}
+
+/** Host saw the deposit on the account: record it and confirm the booking. */
+export function confirmDepositReceived(
+  state: AppState,
+  id: string,
+  method: Payment['method'],
+  provider: string | null,
+  now: string,
+): AppState {
+  const booking = state.bookings.find((b) => b.id === id);
+  if (!booking) return state;
+  const paid = state.payments
+    .filter((p) => p.bookingId === id && p.status === 'succeeded' && p.kind !== 'refund')
+    .reduce((s, p) => s + p.amount, 0);
+  const due = Math.max(0, booking.prepaymentDue - paid);
+  let next = state;
+  if (due > 0) {
+    next = addPayment(next, {
+      bookingId: id,
+      kind: 'prepayment',
+      method,
+      provider,
+      amount: due,
+      fee: 0,
+      currency: booking.currency,
+      paidAt: now,
+      status: 'succeeded',
+    });
+  }
+  return booking.status === 'pending' ? updateBooking(next, id, { status: 'confirmed' }, now) : next;
+}
+
+export function extendHold(state: AppState, id: string, hours: number): AppState {
+  return {
+    ...state,
+    bookings: state.bookings.map((b) =>
+      b.id === id && b.holdUntil ? { ...b, holdUntil: plusHours(new Date(Math.max(Date.parse(b.holdUntil), Date.now())).toISOString(), hours) } : b,
+    ),
+  };
+}
+
+/** Releases pending bookings whose deposit did not arrive in time. */
+export function expireHolds(state: AppState, now: Date, nowIso: string): AppState {
+  const expired = state.bookings.filter((b) => {
+    if (b.status !== 'pending' || !b.holdUntil || Date.parse(b.holdUntil) > now.getTime()) return false;
+    const paid = state.payments
+      .filter((p) => p.bookingId === b.id && p.status === 'succeeded' && p.kind !== 'refund')
+      .reduce((s, p) => s + p.amount, 0);
+    return paid < b.prepaymentDue;
+  });
+  return expired.reduce((s, b) => updateBooking(s, b.id, { status: 'cancelled', cancelReason: 'hold_expired' }, nowIso), state);
 }

@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { type IconName } from '../../components/Icon';
+import { Icon, type IconName } from '../../components/Icon';
+import { Link } from 'react-router-dom';
 import { AccRow, Field, Screen } from '../../components/Layout';
 import { useToast } from '../../components/Toast';
 import { addDays, nightsBetween, todayIn } from '../../domain/dates';
@@ -17,6 +18,7 @@ import {
 } from '../../data/state';
 import { useStore } from '../../data/store';
 import { useT } from '../../i18n';
+import { PaymentSettings } from './PaymentSettings';
 import { PropertySwitch } from './PropertySwitch';
 import { hostTabs } from './tabs';
 import { useHostProperty } from './useHostProperty';
@@ -41,8 +43,20 @@ export function SettingsScreen() {
         <>
           <PropertySwitch properties={properties} value={property} onChange={select} />
           <div>
-          <Section icon="wallet" title={t.settings.prices}>
+          <Link to={`/host/promo?p=${property.slug}`} className="promo" style={{ minHeight: 64 }}>
+            <strong>
+              {t.promo.title}
+              <span className="muted">{t.promo.subtitle}</span>
+            </strong>
+            <span className="roundBtn lime">
+              <Icon name="share" />
+            </span>
+          </Link>
+          <Section icon="sliders" title={t.settings.prices}>
             <Prices key={property.id} property={property} onSaved={() => toast.show(t.common.saved)} />
+          </Section>
+          <Section icon="wallet" title={t.payment.title}>
+            <PaymentSettings key={property.id} property={property} onSaved={() => toast.show(t.common.saved)} />
           </Section>
           <Section icon="shield" title={t.settings.rules}>
             <Rules key={property.id} property={property} onSaved={() => toast.show(t.common.saved)} />
@@ -61,7 +75,7 @@ export function SettingsScreen() {
       <Section icon="sparkle" title={t.settings.aynes} open>
         <Aynes />
       </Section>
-      <Section icon="sliders" title={t.settings.demo}>
+      <Section icon="user" title={t.settings.demo}>
         <Demo />
       </Section>
       {toast.node}

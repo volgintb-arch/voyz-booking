@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { Screen } from '../../components/Layout';
 import { holdsUnit } from '../../domain/availability';
@@ -79,7 +79,14 @@ export function BoardScreen() {
 
   return (
     <Screen title={t.host.tabBoard} back="/" tabs={hostTabs(t)}>
-      <PropertySwitch properties={properties} value={property} onChange={select} />
+      <div className="row" style={{ alignItems: 'center' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <PropertySwitch properties={properties} value={property} onChange={select} />
+        </div>
+        <Link to={`/host/promo?p=${property.slug}`} className="roundBtn lime" aria-label={t.promo.title} title={t.promo.title}>
+          <Icon name="share" />
+        </Link>
+      </div>
       <div className="row between">
         <div className="row">
           <button type="button" className="roundBtn small" aria-label="-7" onClick={() => setOffset((o) => o - 7)}>

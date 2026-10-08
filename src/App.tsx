@@ -10,6 +10,8 @@ import { BoardScreen } from './screens/host/BoardScreen';
 import { BookingDetailScreen } from './screens/host/BookingDetailScreen';
 import { BookingsScreen } from './screens/host/BookingsScreen';
 import { NewBookingScreen } from './screens/host/NewBookingScreen';
+import { PosterScreen } from './screens/host/PosterScreen';
+import { PromoScreen } from './screens/host/PromoScreen';
 import { SettingsScreen } from './screens/host/SettingsScreen';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 
@@ -32,6 +34,8 @@ export function App() {
           <Route path="/host/b/:id" element={<BookingDetailScreen />} />
           <Route path="/host/new" element={<NewBookingScreen />} />
           <Route path="/host/settings" element={<SettingsScreen />} />
+          <Route path="/host/promo" element={<PromoScreen />} />
+          <Route path="/host/poster" element={<PosterScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </HashRouter>

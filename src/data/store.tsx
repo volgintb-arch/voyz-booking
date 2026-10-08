@@ -1,15 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { sendToAynes } from '../integrations/aynes';
-import { initialState, markOutbox, type AppState } from './state';
+import { nowWithOffset } from '../domain/dates';
+import { expireHolds, initialState, markOutbox, type AppState } from './state';
 
-const STORAGE_KEY = 'voyz-booking:v1';
+const STORAGE_KEY = 'voyz-booking:v2';
 
 function load(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as AppState;
-      if (parsed.schema === 1) return parsed;
+      if (parsed.schema === 2) return parsed;
     }
   } catch {
     // storage unavailable (private mode) — start from the demo seed
@@ -88,6 +89,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (online) void flush();
   }, [online, flush]);
+
+  // The server will release unpaid bookings; until then the device does it (D-001).
+  useEffect(() => {
+    const tick = () => setState((s) => {
+      const next = expireHolds(s, new Date(), nowWithOffset('Asia/Bishkek'));
+      return next === s ? s : next;
+    });
+    tick();
+    const id = setInterval(tick, 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const reset = useCallback(() => setState({ ...initialState(), lang: stateRef.current.lang }), []);
 

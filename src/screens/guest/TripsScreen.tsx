@@ -12,7 +12,7 @@ import { guestTabs } from './tabs';
 
 export function TripsScreen() {
   const { state, update } = useStore();
-  const { t, lang, fmtRange } = useT();
+  const { t, lang, fmtRange, fmtInstant } = useT();
   const trips = state.bookings
     .filter((b) => state.guestBookingIds.includes(b.id))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -32,7 +32,7 @@ export function TripsScreen() {
           const question =
             money.paid === 0 ? t.detail.confirmCancel : refund > 0 ? t.trips.cancelRefund(fmt(refund)) : t.trips.cancelNoRefund;
           if (window.confirm(question)) {
-            update((s) => updateBooking(s, b.id, { status: 'cancelled' }, nowWithOffset(property.timezone)));
+            update((s) => updateBooking(s, b.id, { status: 'cancelled', cancelReason: 'guest' }, nowWithOffset(property.timezone)));
           }
         };
         const owesPrepayment = canCancel && money.paid < b.prepaymentDue;
@@ -51,9 +51,14 @@ export function TripsScreen() {
               <span className="pricePill">{fmt(b.total)}</span>
             </div>
             <span className="small">{t.trips.paid(fmt(money.paid))}</span>
+            {b.status === 'pending' && b.guestReportedPaidAt && <p className="banner info">{t.pay.reported}</p>}
+            {b.status === 'pending' && !b.guestReportedPaidAt && b.holdUntil && owesPrepayment && (
+              <p className="small strong">{t.pay.deadline(fmtInstant(b.holdUntil))}</p>
+            )}
+            {b.status === 'cancelled' && b.cancelReason === 'hold_expired' && <p className="small danger">{t.pay.expired}</p>}
             {canCancel && (
               <div className="actions">
-                {owesPrepayment && (
+                {owesPrepayment && !b.guestReportedPaidAt && (
                   <Link className="btn small lime" to={`/guest/pay/${b.id}`}>
                     {t.pay.title}
                   </Link>

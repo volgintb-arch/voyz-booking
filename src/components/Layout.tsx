@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useStore } from '../data/store';
 import { LANGS, useT } from '../i18n';
+import { isEmbedded } from '../share/links';
 import { Icon, type IconName } from './Icon';
 
 /** Round button that cycles ru → ky → en. */
@@ -36,8 +37,11 @@ export function Screen({ title, back, tabs, bar, children }: ScreenProps) {
   const navigate = useNavigate();
   const { online } = useStore();
   const { t } = useT();
+  // Inside the site widget there is no app around the booking flow.
+  const embedded = isEmbedded();
+  if (embedded) tabs = undefined;
   return (
-    <div className={`app${tabs ? ' withTabs' : ''}${bar ? ' withBar' : ''}`}>
+    <div className={`app${tabs ? ' withTabs' : ''}${bar ? ' withBar' : ''}${embedded ? ' embedded' : ''}`}>
       <header className="header">
         {back ? (
           <button

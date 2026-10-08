@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { rememberVisit } from '../../share/links';
 import { addDays, isIsoDate, todayIn } from '../../domain/dates';
 
 export interface StayParams {
@@ -9,6 +11,7 @@ export interface StayParams {
 
 export function useStayParams(): [StayParams, (patch: Partial<StayParams>) => void, string] {
   const [params, setParams] = useSearchParams();
+  useEffect(() => rememberVisit(params), [params]);
   const today = todayIn('Asia/Bishkek');
   const rawIn = params.get('in') ?? '';
   const rawOut = params.get('out') ?? '';

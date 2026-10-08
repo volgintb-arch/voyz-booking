@@ -40,7 +40,11 @@ const booking = (patch: Partial<Booking>): Booking => ({
   createdAt: '',
   updatedAt: '',
   cancelledAt: null,
+  cancelReason: null,
   createdBy: 'guest',
+  source: null,
+  holdUntil: null,
+  guestReportedPaidAt: null,
   ...patch,
 });
 

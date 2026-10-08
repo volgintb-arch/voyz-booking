@@ -40,6 +40,18 @@ export interface Property {
   paymentMethods: PaymentMethod[];
   amenities: AmenityCode[];
   hue: number; // cover illustration colour until real photos exist
+  payment: HostPayment;
+}
+
+/**
+ * How guests pay the deposit before online acquiring exists (D-001):
+ * straight to the host's own QR or account, the host confirms receipt.
+ */
+export interface HostPayment {
+  qrImage: string | null; // data URL of the host's bank QR (ELQR, MBANK…)
+  recipient: string; // name as the guest sees it in the bank app
+  details: string; // phone, card or account number for a transfer
+  holdHours: number; // unpaid booking is released after this many hours
 }
 
 export type AmenityCode =
@@ -100,6 +112,11 @@ export type Channel =
   | 'booking_com'
   | 'airbnb';
 
+/** Where the guest came from: the link the host shared (D-004, share links). */
+export type LinkSource = 'instagram' | 'whatsapp' | 'telegram' | 'qr' | 'site' | 'direct';
+
+export type CancelReason = 'guest' | 'host' | 'hold_expired';
+
 export interface Booking {
   id: string; // external id sent to Aynes, e.g. VZ-2027-0714
   version: number; // grows on every change (Aynes rejects older versions)
@@ -121,7 +138,11 @@ export interface Booking {
   createdAt: string; // ISO instant
   updatedAt: string;
   cancelledAt: string | null;
+  cancelReason: CancelReason | null;
   createdBy: 'guest' | 'host';
+  source: LinkSource | null;
+  holdUntil: string | null; // deposit deadline; the unit is released after it
+  guestReportedPaidAt: string | null; // guest pressed "I have paid"
 }
 
 export type PaymentKind = 'prepayment' | 'payment' | 'refund';

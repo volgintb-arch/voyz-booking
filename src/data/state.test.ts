@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addDays, todayIn } from '../domain/dates';
-import { addPayment, createBooking, initialState, updateBooking, type NewBooking } from './state';
+import { addPayment, confirmDepositReceived, createBooking, expireHolds, initialState, reportPaid, updateBooking, type NewBooking } from './state';
 
 const now = new Date('2027-06-01T06:00:00Z');
 const NOW = '2027-06-01T12:00:00+06:00';
@@ -24,6 +24,7 @@ function input(patch: Partial<NewBooking> = {}): NewBooking {
     nonRefundablePrepayment: false,
     note: '',
     createdBy: 'host',
+    source: null,
     ...patch,
   };
 }
@@ -74,5 +75,46 @@ describe('state', () => {
     const item = s.outbox.at(-1)!;
     expect(item.path).toMatch(/\/payments\/P-\d+$/);
     expect(item.body).toMatchObject({ kind: 'refund', fee: 0, amount: 100000 });
+  });
+});
+
+describe('deposit hold (D-001)', () => {
+  const guestBooking = () => {
+    const r = createBooking(initialState(now), input({ createdBy: 'guest', status: 'pending', channel: 'voyz', source: 'instagram' }), NOW);
+    if (!r.ok) throw new Error('expected ok');
+    return r;
+  };
+
+  it('holds an unpaid guest booking for the property hold time', () => {
+    const { booking } = guestBooking();
+    // Son-Kul holds for 24 h
+    expect(booking.holdUntil).toBe(new Date(Date.parse(NOW) + 24 * 3_600_000).toISOString());
+  });
+
+  it('releases the unit when the deposit does not arrive in time', () => {
+    const { state, booking } = guestBooking();
+    const late = new Date(Date.parse(booking.holdUntil!) + 1000);
+    const next = expireHolds(state, late, NOW);
+    const b = next.bookings.find((x) => x.id === booking.id)!;
+    expect(b.status).toBe('cancelled');
+    expect(b.cancelReason).toBe('hold_expired');
+    expect(next.outbox.at(-1)!.body).toMatchObject({ status: 'cancelled' });
+    // before the deadline nothing changes
+    expect(expireHolds(state, new Date(Date.parse(NOW) + 1000), NOW)).toBe(state);
+  });
+
+  it('records the deposit and confirms when the host sees the money', () => {
+    const { state, booking } = guestBooking();
+    const reported = reportPaid(state, booking.id, NOW);
+    const next = confirmDepositReceived(reported, booking.id, 'qr', null, NOW);
+    const b = next.bookings.find((x) => x.id === booking.id)!;
+    expect(b.status).toBe('confirmed');
+    expect(b.holdUntil).toBeNull();
+    const pay = next.payments.filter((p) => p.bookingId === booking.id);
+    expect(pay).toHaveLength(1);
+    expect(pay[0]).toMatchObject({ kind: 'prepayment', method: 'qr', amount: 210000 });
+    // a confirmed booking is never released automatically
+    const later = expireHolds(next, new Date(Date.parse(NOW) + 100 * 3_600_000), NOW);
+    expect(later.bookings.find((x) => x.id === booking.id)!.status).toBe('confirmed');
   });
 });

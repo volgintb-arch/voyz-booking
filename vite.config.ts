@@ -2,6 +2,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { sharePages } from './share-pages';
+
+const PUBLIC_URL = process.env.VITE_PUBLIC_URL ?? 'https://volgintb-arch.github.io/voyz-booking/';
 
 // Relative base: the same build works on GitHub Pages (/voyz-booking/),
 // inside the iOS/Android shell (Capacitor) and in a Telegram Mini App.
@@ -9,9 +12,10 @@ export default defineConfig({
   base: './',
   plugins: [
     react(),
+    sharePages(PUBLIC_URL),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['icon.svg', 'apple-touch-icon.png', 'widget.js'],
       manifest: {
         name: 'Voyz Booking',
         short_name: 'Voyz',
@@ -29,7 +33,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // Fonts: only the Latin and Cyrillic subsets (Kyrgyz letters live in cyrillic-ext).
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}', 'assets/*-{latin,latin-ext,cyrillic,cyrillic-ext}-*.woff2'],
+        globIgnores: ['s/**', 'widget.js', 'og.png'],
+        navigateFallbackDenylist: [/\/s\//],
       },
     }),
   ],

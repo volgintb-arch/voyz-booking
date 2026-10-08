@@ -229,6 +229,19 @@ describe('iCal and share links', () => {
   });
 });
 
+describe('telegram webhook', () => {
+  it('re-claims the webhook when another service took the bot', async () => {
+    h = await harness();
+    h.respond.set('getMe', () => Response.json({ ok: true, result: { username: 'voyz_test_bot' } }));
+    h.respond.set('getWebhookInfo', () => Response.json({ ok: true, result: { url: 'https://other.example/hook', pending_update_count: 3 } }));
+    const r = await api<{ webhookOk: boolean; fixed: boolean; botUsername: string }>(h, 'GET', '/api/telegram/status');
+    expect(r.data).toMatchObject({ webhookOk: true, fixed: true, botUsername: 'voyz_test_bot' });
+    const set = h.calls.find((c) => c.url.endsWith('/setWebhook'));
+    expect(set?.body).toMatchObject({ url: 'https://api.test/api/telegram/webhook/hook' });
+    expect(JSON.stringify(r.data)).not.toContain('hook/hook');
+  });
+});
+
 describe('config', () => {
   it('accepts the bot name with or without @', async () => {
     const { loadConfig } = await import('../src/config');

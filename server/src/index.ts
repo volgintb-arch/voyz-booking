@@ -3,7 +3,7 @@ import { loadConfig } from './config';
 import type { Ctx } from './context';
 import { createPool, migrate } from './db';
 import { seedDemo } from './demo';
-import { TelegramApi, TelegramNotifier } from './services/telegram';
+import { ensureWebhook, TelegramApi, TelegramNotifier } from './services/telegram';
 import { startWorkers } from './workers';
 
 const config = loadConfig();
@@ -17,12 +17,7 @@ const ctx: Ctx = { db, config, notify: new TelegramNotifier(db, config, api), no
 const app = await buildApp(ctx, api, { logger: true });
 if (applied.length) app.log.info({ applied }, 'migrations applied');
 
-if (api.enabled && config.TELEGRAM_WEBHOOK_SECRET) {
-  await api.call('setWebhook', {
-    url: `${config.API_URL}api/telegram/webhook/${config.TELEGRAM_WEBHOOK_SECRET}`,
-    allowed_updates: ['message', 'callback_query'],
-  });
-}
+app.log.info({ bot: await ensureWebhook(ctx, api) }, 'telegram webhook');
 const stop = config.RUN_WORKERS ? startWorkers(ctx, api, app.log) : () => {};
 
 await app.listen({ port: config.PORT, host: config.HOST });

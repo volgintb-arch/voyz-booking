@@ -2,7 +2,7 @@ import type { Ctx } from './context';
 import { expireHolds } from './services/bookings';
 import { syncDue } from './services/ical';
 import { flushOutbox } from './services/outbox';
-import { morningSummary, type TelegramApi } from './services/telegram';
+import { ensureWebhook, morningSummary, type TelegramApi } from './services/telegram';
 
 type Log = { error: (o: unknown, msg?: string) => void };
 
@@ -13,6 +13,7 @@ export function startWorkers(ctx: Ctx, api: TelegramApi, log: Log): () => void {
     ['holds', 60_000, () => expireHolds(ctx)],
     ['ical', 5 * 60_000, () => syncDue(ctx, 20)],
     ['summary', 10 * 60_000, () => morningSummary(ctx, api)],
+    ['webhook', 10 * 60_000, () => ensureWebhook(ctx, api)],
   ];
   const timers = jobs.map(([name, every, run]) => {
     let busy = false;

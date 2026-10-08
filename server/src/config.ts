@@ -27,7 +27,8 @@ export type Config = z.infer<typeof Env> & { corsOrigins: string[] };
 const withSlash = (u: string) => (u.endsWith('/') ? u : `${u}/`);
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const parsed = Env.parse(env);
+  // Render tells the service its own public address — no need to type API_URL by hand.
+  const parsed = Env.parse({ ...env, API_URL: env.API_URL || env.RENDER_EXTERNAL_URL || undefined });
   return {
     ...parsed,
     API_URL: withSlash(parsed.API_URL),

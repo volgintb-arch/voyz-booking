@@ -29,8 +29,6 @@ services:
         value: https://volgintb-arch.github.io/voyz-booking/
       - key: CORS_ORIGINS
         value: https://volgintb-arch.github.io,capacitor://localhost,http://localhost,https://localhost
-      - key: API_URL
-        sync: false # https://<service>.onrender.com/ after the first deploy
       - key: TELEGRAM_BOT_TOKEN
         sync: false # from @BotFather
       - key: TELEGRAM_BOT_USERNAME

@@ -16,12 +16,15 @@
    файл `render.yaml` и создаст базу данных и сервер.
 3. В настройках сервиса **voyz-booking-api → Environment** заполните:
    - `TELEGRAM_BOT_TOKEN` — токен из шага 1;
-   - `TELEGRAM_BOT_USERNAME` — адрес бота без `@`;
-   - `API_URL` — адрес сервиса, который покажет Render, например
-     `https://voyz-booking-api.onrender.com/`.
+   - `TELEGRAM_BOT_USERNAME` — адрес бота без `@`.
+
+   Адрес сервера (`API_URL`) вводить не нужно: Render сообщает его серверу сам.
+   Посмотреть его можно вверху страницы сервиса, под названием
+   `voyz-booking-api` — ссылка вида `https://voyz-booking-api.onrender.com`.
 4. Сохраните — сервер перезапустится и сам подключит бота.
 
-Проверка: откройте `API_URL` + `health` — должно быть `{"ok":true}`.
+Проверка: откройте адрес сервера + `/health`
+(например `https://voyz-booking-api.onrender.com/health`) — должно быть `{"ok":true}`.
 
 Демо-данные (4 объекта): Render → сервис → **Shell** → `npm run seed`.
 
@@ -30,7 +33,8 @@
 GitHub → репозиторий → **Settings → Secrets and variables → Actions →
 Variables → New repository variable**:
 
-- имя `VITE_API_URL`, значение — тот же `API_URL`.
+- имя `VITE_API_URL`, значение — адрес сервера из Render
+  (например `https://voyz-booking-api.onrender.com/`).
 
 Затем **Actions → Web → Run workflow** и **Android → Run workflow**.
 Сайт и APK пересоберутся уже с сервером.
